@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>西安城市发展时间线</title>
+    
+    <!-- 1. 引入 Leaflet 的样式文件 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        /* 2. 让地图容器占满整个屏幕 */
+        body { margin: 0; padding: 0; }
+        #map { height: 100vh; width: 100%; }
+    </style>
+</head>
+<body>
+    <!-- 3. 地图的容器，id 必须是 "map" -->
+     <div id="control-panel" style="position: absolute; top: 10px; left: 60px; z-index: 1000; background: white; padding: 10px; border-radius: 5px; box-shadow: 0 1px 5px rgba(0,0,0,0.4);">
+    <label for="year-slider">筛选年份：<span id="year-label">全部</span></label>
+    <input type="range" id="year-slider" min="2011" max="2024" value="2024" step="1" style="width: 200px;">
+</div>
+    <div id="map"></div>
+
+    <!-- 4. 引入 Leaflet 的 JavaScript 文件 -->
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <script>
+// --- 1. 初始化地图 (同上) ---
+const map = L.map('map').setView([34.3416, 108.9398], 11);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+}).addTo(map);
+
+// --- 2. 准备数据容器 ---
+let allEvents = []; // 存放从 JSON 加载的全部数据
+const eventLayer = L.layerGroup().addTo(map); // 存放当前显示的标记
+
+// --- 3. 核心函数：根据年份过滤并重绘标记 ---
+function renderMarkersByYear(year) {
+    // 清空当前所有标记
+    eventLayer.clearLayers();
+    
+    // 遍历所有事件，只显示年份 <= 滑块的
+    allEvents.forEach(e => {
+        if (e.year <= year) {
+            const popupHTML = `
+                <b>${e.year} · ${e.title}</b><br>
+                ${e.desc}<br>
+                <small>来源：${e.source}</small>
+            `;
+            L.marker([e.lat, e.lng]).bindPopup(popupHTML).addTo(eventLayer);
+        }
+    });
+}
+
+// --- 4. 获取滑块和标签元素 ---
+const yearSlider = document.getElementById('year-slider');
+const yearLabel = document.getElementById('year-label');
+
+// --- 5. 加载数据并初始化 ---
+fetch('events.json')
+    .then(response => response.json())
+    .then(events => {
+        allEvents = events;
+        
+        // 根据数据动态设置滑块的 min 和 max
+        const years = allEvents.map(e => e.year);
+        const minYear = Math.min(...years);
+        const maxYear = Math.max(...years);
+        yearSlider.min = minYear;
+        yearSlider.max = maxYear;
+        yearSlider.value = maxYear; // 默认显示全部
+        yearLabel.textContent = `全部 (≤ ${maxYear})`;
+        
+        // 首次渲染
+        renderMarkersByYear(maxYear);
+    })
+    .catch(error => console.error('加载 events.json 失败:', error));
+
+// --- 6. 监听滑块拖动事件 ---
+yearSlider.addEventListener('input', function() {
+    const selectedYear = parseInt(this.value);
+    yearLabel.textContent = `≤ ${selectedYear}`;
+    renderMarkersByYear(selectedYear);
+});
+    </script>
+</body>
+</html>
