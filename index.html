@@ -5,227 +5,291 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>西安城市发展时间线</title>
     
-    <!-- 1. Leaflet 核心样式 -->
+    <!-- 引入 Leaflet 核心样式 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
-        <!-- 引入 ECharts -->
-    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
-    <!-- 2. TimeDimension 插件样式和依赖 -->
+    
+    <!-- 引入 TimeDimension 插件样式 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-timedimension@1.1.1/dist/leaflet.timedimension.control.min.css" />
     
     <style>
-        body { margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; }
-        /* 地图占上面 70% 的高度 */
-        #map { height: 70vh; width: 100%; }
-        /* 图表占下面 30% 的高度 */
-        #chart { height: 30vh; width: 100%; background: #fff; }
-     /* 图例样式 */
-.legend {
-    background: white;
-    padding: 10px;
-    border-radius: 5px;
-    box-shadow: 0 1px 5px rgba(0,0,0,0.4);
-    line-height: 1.5;
-    font-size: 14px;
-}
-.legend i {
-    width: 12px;
-    height: 12px;
-    float: left;
-    margin-right: 8px;
-    margin-top: 4px;
-    border-radius: 50%;
-}   
+        body { 
+            margin: 0; 
+            padding: 0; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            overflow: hidden; 
+            font-family: sans-serif; 
+        }
+        #map { 
+            height: 65vh; 
+            width: 100%; 
+        }
+        #chart { 
+            height: 35vh; 
+            width: 100%; 
+            background: #fff; 
+        }
+        /* 右上角图例样式 */
+        .legend {
+            background: white; 
+            padding: 10px; 
+            border-radius: 5px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.4); 
+            line-height: 1.5; 
+            font-size: 14px;
+        }
+        .legend i { 
+            width: 12px; 
+            height: 12px; 
+            float: left; 
+            margin-right: 8px; 
+            margin-top: 4px; 
+            border-radius: 50%; 
+        }
     </style>
 </head>
 <body>
-    <!-- 地图容器 -->
+    <!-- 左上角搜索框 -->
+    <div id="search-container" style="position: absolute; top: 10px; left: 60px; z-index: 1000; background: white; padding: 10px; border-radius: 5px; box-shadow: 0 1px 5px rgba(0,0,0,0.4);">
+        <input type="text" id="search-input" placeholder="搜索关键词（如：地铁、规划）..." style="width: 250px; padding: 5px; border: 1px solid #ccc; border-radius: 3px; outline: none;">
+    </div>
+
+    <!-- 地图和图表容器 -->
     <div id="map"></div>
-    <!-- 地图容器 -->
-    <div id="map"></div>
-    <!-- 图表容器 -->
     <div id="chart"></div>
-    <!-- 3. Leaflet 核心 JS -->
+
+    <!-- 引入各种库 -->
     <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-    
-    <!-- 4. TimeDimension 插件依赖的 JS -->
     <script src="https://cdn.jsdelivr.net/npm/iso8601-js-period@0.2.1/iso8601.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-timedimension@1.1.1/dist/leaflet.timedimension.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     
-    <!-- 5. 我们的业务代码 -->
     <script>
-        // --- 1. 初始化地图 ---
+        // ==========================================
+        // 1. 初始化地图与时间轴
+        // ==========================================
         const map = L.map('map', {
             center: [34.3416, 108.9398],
             zoom: 11,
             timeDimension: true,
             timeDimensionControl: true,
             timeDimensionControlOptions: {
-                position: 'bottomleft',
-                autoPlay: false,
-                minSpeed: 1,
+                position: 'bottomleft', 
+                autoPlay: false, 
+                minSpeed: 1, 
                 maxSpeed: 10,
-                timeSliderDragUpdate: true,
+                timeSliderDragUpdate: true, 
                 loop: false
             }
         });
 
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '© <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        // 使用国内极速的高德地图底图
+        L.tileLayer('https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+            maxZoom: 19, 
+            attribution: '© 高德地图'
         }).addTo(map);
 
-        // --- 2. 初始化 ECharts 实例 ---
+        // ==========================================
+        // 2. 初始化 ECharts 实例
+        // ==========================================
         const chartDom = document.getElementById('chart');
         const myChart = echarts.init(chartDom);
         
-        // 用来存放全局的数据和图表实例
         let allEvents = [];
-        let geojsonData = null;
+        let currentTimeLayer = null;
+        let currentGeoJsonLayer = null;
 
-        // --- 3. 核心函数：渲染/更新 ECharts 柱状图 ---
-        // 参数 currentYear 是地图时间轴当前所在的年份
-        function updateChart(currentYear) {
-            // 统计每一年的数据量
+        // ==========================================
+        // 3. 事件分类颜色映射
+        // ==========================================
+        function getColor(category) {
+            if (category === '交通') return '#007bff'; // 蓝
+            if (category === '规划') return '#dc3545'; // 红
+            if (category === '文化') return '#28a745'; // 绿
+            return '#6c757d';
+        }
+
+        // ==========================================
+        // 4. 图表数据更新
+        // ==========================================
+        function updateChartData(eventsArray) {
             const yearCounts = {};
-            allEvents.forEach(e => {
-                yearCounts[e.year] = (yearCounts[e.year] || 0) + 1;
+            eventsArray.forEach(e => { 
+                yearCounts[e.year] = (yearCounts[e.year] || 0) + 1; 
             });
             
-            // 提取年份和对应的数量，按年份排序
             const years = Object.keys(yearCounts).sort((a, b) => a - b);
             const counts = years.map(y => yearCounts[y]);
+            const currentYear = new Date(map.timeDimension.getCurrentTime()).getFullYear();
 
-            // 设置 ECharts 的配置
             const option = {
-                title: { text: '西安城市发展事件年份分布', left: 'center', textStyle: { fontSize: 14 } },
+                title: { 
+                    text: '西安城市发展事件年份分布', 
+                    left: 'center', 
+                    textStyle: { fontSize: 14 } 
+                },
                 tooltip: { trigger: 'axis' },
-                grid: { left: '5%', right: '5%', bottom: '10%', top: '20%', containLabel: true },
+                grid: { 
+                    left: '5%', 
+                    right: '5%', 
+                    bottom: '10%', 
+                    top: '20%', 
+                    containLabel: true 
+                },
                 xAxis: { 
                     type: 'category', 
-                    data: years,
-                    axisLabel: { interval: 0 } // 强制显示所有年份
+                    data: years, 
+                    axisLabel: { interval: 0 } 
                 },
-                yAxis: { type: 'value', minInterval: 1 }, // 只显示整数
+                yAxis: { 
+                    type: 'value', 
+                    minInterval: 1 
+                },
                 series: [{
-                    name: '事件数',
-                    type: 'bar',
-                    data: counts,
-                    // 判断当前柱子是不是地图时间轴所在的年份，如果是就变色
+                    name: '事件数', 
+                    type: 'bar', 
+                    data: counts, 
+                    barMaxWidth: 40,
                     itemStyle: {
                         color: function(params) {
                             const year = parseInt(years[params.dataIndex]);
-                            // 如果当前柱子的年份 <= 时间轴的年份，显示蓝色，否则显示灰色
                             return year <= currentYear ? '#5470c6' : '#e0e0e0';
                         }
-                    },
-                    barMaxWidth: 40
+                    }
                 }]
             };
-            // 绑定点击事件：点击柱子，地图时间轴跳转
-myChart.off('click'); // 先解绑之前的，防止重复触发
-myChart.on('click', function (params) {
-    const clickedYear = parseInt(params.name); // 获取点击的年份
-    // 构造该年的日期时间戳（1月1日）
-    const targetDate = new Date(`${clickedYear}-01-01T00:00:00`);
-    // 调用插件 API 跳转时间
-    map.timeDimension.setCurrentTime(targetDate.getTime());
-});
-            myChart.setOption(option);
+            myChart.setOption(option, true);
         }
 
-        // --- 4. 将 events 数组转换为 GeoJSON ---
+        // ==========================================
+        // 5. 数据转 GeoJSON 格式
+        // ==========================================
         function eventsToGeoJSON(events) {
             return {
                 type: 'FeatureCollection',
                 features: events.map(e => ({
                     type: 'Feature',
-                    geometry: { type: 'Point', coordinates: [e.lng, e.lat] },
-                    properties: {
-                        time: `${e.year}-01-01`,
-                        title: e.title,
-                        year: e.year,
-                        category: e.category,
-                        desc: e.desc,
-                        source: e.source
+                    geometry: { 
+                        type: 'Point', 
+                        coordinates: [e.lng, e.lat] 
+                    },
+                    properties: { 
+                        time: `${e.year}-01-01`, 
+                        title: e.title, 
+                        year: e.year, 
+                        category: e.category, 
+                        desc: e.desc, 
+                        source: e.source, 
+                        image: e.image 
                     }
                 }))
             };
         }
 
-        // --- 5. 加载数据并启动 ---
+        // ==========================================
+        // 6. 核心渲染逻辑（含图片弹窗）
+        // ==========================================
+        function renderData(eventsArray) {
+            if (currentTimeLayer) { map.removeLayer(currentTimeLayer); }
+            if (currentGeoJsonLayer) { map.removeLayer(currentGeoJsonLayer); }
+
+            updateChartData(eventsArray);
+            const geojsonData = eventsToGeoJSON(eventsArray);
+
+            currentGeoJsonLayer = L.geoJSON(geojsonData, {
+                pointToLayer: function (feature, latlng) {
+                    return L.circleMarker(latlng, {
+                        radius: 8, 
+                        fillColor: getColor(feature.properties.category),
+                        color: '#fff', 
+                        weight: 2, 
+                        opacity: 1, 
+                        fillOpacity: 0.8
+                    });
+                },
+                onEachFeature: function (feature, layer) {
+                    const p = feature.properties;
+                    // 加了 referrerpolicy 绕过防盗链
+                    let imageTag = p.image ? `<img src="${p.image}" referrerpolicy="no-referrer" style="width: 100%; height: 140px; object-fit: cover; border-radius: 4px; margin-bottom: 8px;">` : '';
+                    
+                    const popupHTML = `
+                        <div style="max-width: 240px; font-family: sans-serif;">
+                            ${imageTag}
+                            <b style="font-size: 15px; color: #333;">${p.year} · ${p.title}</b>
+                            <p style="margin: 6px 0; font-size: 13px; color: #555; line-height: 1.5;">${p.desc}</p>
+                            <small style="color: #999; font-size: 11px;">来源：${p.source}</small>
+                        </div>
+                    `;
+                    layer.bindPopup(popupHTML, { maxWidth: 260 });
+                    layer.bindTooltip(`${p.year} · ${p.title}`);
+                }
+            });
+
+            currentTimeLayer = L.timeDimension.layer.geoJson(currentGeoJsonLayer, {
+                updateTimeDimension: true, 
+                addlastPoint: true, 
+                waitForReady: true
+            });
+            currentTimeLayer.addTo(map);
+        }
+
+        // ==========================================
+        // 7. 主流程与事件监听
+        // ==========================================
         fetch('events.json')
             .then(response => response.json())
             .then(events => {
                 allEvents = events;
-                geojsonData = eventsToGeoJSON(events);
+                renderData(allEvents); // 初次渲染
 
-                // 初始化图表（传入起始年份，比如最早的 2011）
-                updateChart(2011);
+                // 添加右上角图例
+                const legend = L.control({ position: 'topright' });
+                legend.onAdd = function (map) {
+                    const div = L.DomUtil.create('div', 'legend');
+                    div.innerHTML += '<b>事件类型</b><br>';
+                    div.innerHTML += '<i style="background: #007bff"></i>交通<br>';
+                    div.innerHTML += '<i style="background: #dc3545"></i>规划<br>';
+                    div.innerHTML += '<i style="background: #28a745"></i>文化';
+                    return div;
+                };
+                legend.addTo(map);
 
-                // 创建地图图层
-// 定义颜色映射规则
-function getColor(category) {
-    if (category === '交通') return '#007bff'; // 蓝色
-    if (category === '规划') return '#dc3545'; // 红色
-    if (category === '文化') return '#28a745'; // 绿色
-    return '#6c757d'; // 默认灰色
-}
-
-const geoJsonLayer = L.geoJSON(geojsonData, {
-    // 新增 pointToLayer 属性，自定义标记的样式
-    pointToLayer: function (feature, latlng) {
-        return L.circleMarker(latlng, {
-            radius: 8,              // 圆圈大小
-            fillColor: getColor(feature.properties.category),
-            color: '#fff',          // 圆圈边框颜色
-            weight: 2,              // 边框粗细
-            opacity: 1,
-            fillOpacity: 0.8
-        });
-    },
-    onEachFeature: function (feature, layer) {
-        const p = feature.properties;
-        const popupHTML = `<b>${p.year} · ${p.title}</b><br>${p.desc}<br><small>来源：${p.source}</small>`;
-        layer.bindPopup(popupHTML);
-        layer.bindTooltip(`${p.year} · ${p.title}`);
-    }
-});
-
-                // 包装成时间图层
-                const timeLayer = L.timeDimension.layer.geoJson(geoJsonLayer, {
-                    updateTimeDimension: true,
-                    addlastPoint: true,
-                    waitForReady: true
+                // 监听搜索框
+                document.getElementById('search-input').addEventListener('input', function(e) {
+                    const keyword = e.target.value.trim();
+                    if (keyword === '') { 
+                        renderData(allEvents); 
+                    } else {
+                        const filtered = allEvents.filter(item => 
+                            item.title.includes(keyword) || item.desc.includes(keyword) || item.category.includes(keyword)
+                        );
+                        renderData(filtered);
+                    }
                 });
 
-                timeLayer.addTo(map);
-// 添加图例
-const legend = L.control({ position: 'topright' });
-legend.onAdd = function (map) {
-    const div = L.DomUtil.create('div', 'legend');
-    div.innerHTML += '<b>事件类型</b><br>';
-    div.innerHTML += '<i style="background: #007bff"></i>交通<br>';
-    div.innerHTML += '<i style="background: #dc3545"></i>规划<br>';
-    div.innerHTML += '<i style="background: #28a745"></i>文化';
-    return div;
-};
-legend.addTo(map);
-                // --- 6. 终极联动：监听地图时间轴的变化 ---
-                // 当地图的时间轴发生变动时，重新渲染柱状图
+                // 时间轴联动图表颜色
                 map.timeDimension.on('timeload', function(e) {
-                    // 获取当前时间轴的日期对象
-                    const currentDate = new Date(map.timeDimension.getCurrentTime());
-                    const currentYear = currentDate.getFullYear();
-                    // 更新图表
-                    updateChart(currentYear);
+                    const keyword = document.getElementById('search-input').value.trim();
+                    const currentData = keyword === '' ? allEvents : allEvents.filter(item => 
+                        item.title.includes(keyword) || item.desc.includes(keyword) || item.category.includes(keyword)
+                    );
+                    updateChartData(currentData);
                 });
 
+                // 点击图表联动时间轴
+                myChart.off('click');
+                myChart.on('click', function (params) {
+                    const clickedYear = parseInt(params.name);
+                    const targetDate = new Date(`${clickedYear}-01-01T00:00:00`);
+                    map.timeDimension.setCurrentTime(targetDate.getTime());
+                });
             })
             .catch(error => console.error('加载 events.json 失败:', error));
 
-        // --- 7. 窗口大小改变时，图表自适应 ---
-        window.addEventListener('resize', function() {
-            myChart.resize();
+        // 窗口自适应
+        window.addEventListener('resize', function() { 
+            myChart.resize(); 
         });
     </script>
 </body>

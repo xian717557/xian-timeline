@@ -6,87 +6,67 @@
     "lat": 34.3416,
     "lng": 108.9398,
     "desc": "西安首条地铁线路，南北向贯穿城区。",
-    "source": "西安地铁官网/公开新闻"
+    "source": "西安地铁官网",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Xi%27an_Metro_Line_2_train.jpg/640px-Xi%27an_Metro_Line_2_train.jpg"
   },
   {
-    "year": 2013,
-    "title": "西安地铁1号线开通",
-    "category": "交通",
-    "lat": 34.3410,
-    "lng": 108.8910,
-    "desc": "东西向骨干线路，连接汉城路与纺织城。",
-    "source": "西安地铁官网/公开新闻"
-  },
-  {
-    "year": 2016,
-    "title": "西安地铁3号线开通",
-    "category": "交通",
-    "lat": 34.2180,
-    "lng": 108.9640,
-    "desc": "连接鱼化寨与保税区，途经大雁塔。",
-    "source": "西安地铁官网/公开新闻"
+    "year": 2014,
+    "title": "西咸新区获批国家级新区",
+    "category": "规划",
+    "lat": 34.3270,
+    "lng": 108.7320,
+    "desc": "国务院正式批复设立西咸新区，成为全国第七个国家级新区。",
+    "source": "国务院公开批复",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Xi%27an_Skyline.jpg/640px-Xi%27an_Skyline.jpg"
   },
   {
     "year": 2018,
-    "title": "西安获批国家中心城市",
+    "title": "西安获批建设国家中心城市",
     "category": "规划",
     "lat": 34.3416,
     "lng": 108.9398,
-    "desc": "国家发改委支持西安建设国家中心城市。",
-    "source": "公开政策文件/新闻"
+    "desc": "国家发改委支持西安建设国家中心城市，城市能级全面提升。",
+    "source": "公开政策文件",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/Xi%27an_wall_by_night.jpg/640px-Xi%27an_wall_by_night.jpg"
   },
   {
     "year": 2018,
-    "title": "西安地铁4号线开通",
-    "category": "交通",
-    "lat": 34.3030,
-    "lng": 108.9640,
-    "desc": "南北向线路，途经大明宫、大雁塔。",
-    "source": "西安地铁官网/公开新闻"
+    "title": "大唐不夜城步行街提升开街",
+    "category": "文化",
+    "lat": 34.2185,
+    "lng": 108.9605,
+    "desc": "街区全面改造升级为高品质步行街，成为西安城市名片。",
+    "source": "央广网",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Datang_Everbright_City.jpg/640px-Datang_Everbright_City.jpg"
   },
   {
     "year": 2020,
-    "title": "西安地铁5、6、9号线开通",
-    "category": "交通",
-    "lat": 34.2490,
-    "lng": 108.9080,
-    "desc": "三条线路同期开通，线网进一步扩展。",
-    "source": "西安地铁官网/公开新闻"
-  },
-  {
-    "year": 2020,
-    "title": "西安奥体中心建成投用",
+    "title": "西安奥体中心一场两馆竣工",
     "category": "文化",
     "lat": 34.3760,
     "lng": 109.0260,
-    "desc": "第十四届全运会主体育场，位于浐灞。",
-    "source": "公开新闻"
+    "desc": "作为第十四届全运会主场馆，西北地区大型体育中心全面建成。",
+    "source": "西安市政府新闻发布",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Xi%27an_Olympic_Sports_Center_Stadium.jpg/640px-Xi%27an_Olympic_Sports_Center_Stadium.jpg"
   },
   {
-    "year": 2023,
-    "title": "西安地铁16号线开通",
-    "category": "交通",
-    "lat": 34.2450,
-    "lng": 108.7650,
-    "desc": "西咸新区南北向线路，服务秦创原。",
-    "source": "西安地铁官网/公开新闻"
-  },
-  {
-    "year": 2023,
-    "title": "西安都市圈发展规划获批",
-    "category": "规划",
-    "lat": 34.3416,
-    "lng": 108.9398,
-    "desc": "国家发改委批复《西安都市圈发展规划》。",
-    "source": "公开政策文件/新闻"
+    "year": 2021,
+    "title": "幸福林带正式对外开放",
+    "category": "文化",
+    "lat": 34.2680,
+    "lng": 108.9940,
+    "desc": "全国最大的城市景观林带对外开放，包含地下商业与综合管廊。",
+    "source": "公开新闻报道",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Xingfu_Forest_Belt.jpg/640px-Xingfu_Forest_Belt.jpg"
   },
   {
     "year": 2024,
-    "title": "西安地铁10号线开通",
+    "title": "西安地铁8号（环）线开通",
     "category": "交通",
-    "lat": 34.3950,
-    "lng": 108.9850,
-    "desc": "连接主城区与高陵区，跨渭河。",
-    "source": "西安地铁官网/公开新闻"
+    "lat": 34.2980,
+    "lng": 108.9470,
+    "desc": "西安首条地铁环线投入运营，线网总里程突破400公里。",
+    "source": "西安地铁官网",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Xi%27an_Metro_Line_8_Map.png/640px-Xi%27an_Metro_Line_8_Map.png"
   }
 ]
