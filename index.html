@@ -5,86 +5,103 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>西安城市发展时间线</title>
     
-    <!-- 1. 引入 Leaflet 的样式文件 -->
+    <!-- 1. Leaflet 核心样式 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
     
+    <!-- 2. TimeDimension 插件样式和依赖 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-timedimension@1.1.1/dist/leaflet.timedimension.control.min.css" />
+    
     <style>
-        /* 2. 让地图容器占满整个屏幕 */
         body { margin: 0; padding: 0; }
         #map { height: 100vh; width: 100%; }
     </style>
 </head>
 <body>
-    <!-- 3. 地图的容器，id 必须是 "map" -->
-     <div id="control-panel" style="position: absolute; top: 10px; left: 60px; z-index: 1000; background: white; padding: 10px; border-radius: 5px; box-shadow: 0 1px 5px rgba(0,0,0,0.4);">
-    <label for="year-slider">筛选年份：<span id="year-label">全部</span></label>
-    <input type="range" id="year-slider" min="2011" max="2024" value="2024" step="1" style="width: 200px;">
-</div>
+    <!-- 地图容器 -->
     <div id="map"></div>
 
-    <!-- 4. 引入 Leaflet 的 JavaScript 文件 -->
+    <!-- 3. Leaflet 核心 JS -->
     <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
     
-    <script>
-// --- 1. 初始化地图 (同上) ---
-const map = L.map('map').setView([34.3416, 108.9398], 11);
-L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-}).addTo(map);
-
-// --- 2. 准备数据容器 ---
-let allEvents = []; // 存放从 JSON 加载的全部数据
-const eventLayer = L.layerGroup().addTo(map); // 存放当前显示的标记
-
-// --- 3. 核心函数：根据年份过滤并重绘标记 ---
-function renderMarkersByYear(year) {
-    // 清空当前所有标记
-    eventLayer.clearLayers();
+    <!-- 4. TimeDimension 插件依赖的 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/iso8601-js-period@0.2.1/iso8601.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-timedimension@1.1.1/dist/leaflet.timedimension.min.js"></script>
     
-    // 遍历所有事件，只显示年份 <= 滑块的
-    allEvents.forEach(e => {
-        if (e.year <= year) {
-            const popupHTML = `
-                <b>${e.year} · ${e.title}</b><br>
-                ${e.desc}<br>
-                <small>来源：${e.source}</small>
-            `;
-            L.marker([e.lat, e.lng]).bindPopup(popupHTML).addTo(eventLayer);
+    <!-- 5. 我们的业务代码 -->
+    <script>
+        // 初始化地图，启用时间维度控件
+        const map = L.map('map', {
+            center: [34.3416, 108.9398],
+            zoom: 11,
+            timeDimension: true,
+            timeDimensionControl: true,
+            timeDimensionControlOptions: {
+                position: 'bottomleft',
+                autoPlay: false,
+                minSpeed: 1,
+                maxSpeed: 10,
+                timeSliderDragUpdate: true,
+                loop: false
+            }
+        });
+
+        // 添加底图
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+
+        // 将 events 数组转换为 GeoJSON
+        function eventsToGeoJSON(events) {
+            return {
+                type: 'FeatureCollection',
+                features: events.map(e => ({
+                    type: 'Feature',
+                    geometry: {
+                        type: 'Point',
+                        coordinates: [e.lng, e.lat]
+                    },
+                    properties: {
+                        time: `${e.year}-01-01`,
+                        title: e.title,
+                        year: e.year,
+                        category: e.category,
+                        desc: e.desc,
+                        source: e.source
+                    }
+                }))
+            };
         }
-    });
-}
 
-// --- 4. 获取滑块和标签元素 ---
-const yearSlider = document.getElementById('year-slider');
-const yearLabel = document.getElementById('year-label');
+        // 加载数据并渲染
+        fetch('events.json')
+            .then(response => response.json())
+            .then(events => {
+                const geojsonData = eventsToGeoJSON(events);
 
-// --- 5. 加载数据并初始化 ---
-fetch('events.json')
-    .then(response => response.json())
-    .then(events => {
-        allEvents = events;
-        
-        // 根据数据动态设置滑块的 min 和 max
-        const years = allEvents.map(e => e.year);
-        const minYear = Math.min(...years);
-        const maxYear = Math.max(...years);
-        yearSlider.min = minYear;
-        yearSlider.max = maxYear;
-        yearSlider.value = maxYear; // 默认显示全部
-        yearLabel.textContent = `全部 (≤ ${maxYear})`;
-        
-        // 首次渲染
-        renderMarkersByYear(maxYear);
-    })
-    .catch(error => console.error('加载 events.json 失败:', error));
+                const geoJsonLayer = L.geoJSON(geojsonData, {
+                    onEachFeature: function (feature, layer) {
+                        const p = feature.properties;
+                        const popupHTML = `
+                            <b>${p.year} · ${p.title}</b><br>
+                            ${p.desc}<br>
+                            <small>来源：${p.source}</small>
+                        `;
+                        layer.bindPopup(popupHTML);
+                        layer.bindTooltip(`${p.year} · ${p.title}`);
+                    }
+                });
 
-// --- 6. 监听滑块拖动事件 ---
-yearSlider.addEventListener('input', function() {
-    const selectedYear = parseInt(this.value);
-    yearLabel.textContent = `≤ ${selectedYear}`;
-    renderMarkersByYear(selectedYear);
-});
+                // 包装成时间图层
+                const timeLayer = L.timeDimension.layer.geoJson(geoJsonLayer, {
+                    updateTimeDimension: true,
+                    addlastPoint: true,
+                    waitForReady: true
+                });
+
+                timeLayer.addTo(map);
+            })
+            .catch(error => console.error('加载 events.json 失败:', error));
     </script>
 </body>
 </html>
