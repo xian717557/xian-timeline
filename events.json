@@ -1,23 +1,97 @@
 [
   {
+    "year": 1991,
+    "title": "西安高新区获批首批国家级高新区",
+    "category": "经济",
+    "lat": 34.2330,
+    "lng": 108.8840,
+    "desc": "1991年3月经国务院首批批准,为西安后续科技创新与产业集群奠定空间基础。",
+    "source": "陕西省统计局/公开资料",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Xi%27an_Skyline.jpg/640px-Xi%27an_Skyline.jpg"
+  },
+  {
+    "year": 2009,
+    "title": "大唐不夜城步行街一期开街",
+    "category": "文化",
+    "lat": 34.2180,
+    "lng": 108.9600,
+    "desc": "坐落于大雁塔脚下，一期开街后成为西安唐文化展示与文旅夜经济的重要地标。",
+    "source": "公开新闻",
+    "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Datang_Everbright_City.jpg/640px-Datang_Everbright_City.jpg"
+  },
+  {
     "year": 2011,
     "title": "西安地铁2号线开通",
     "category": "交通",
     "lat": 34.3416,
     "lng": 108.9398,
-    "desc": "西安首条地铁线路，南北向贯穿城区。",
+    "desc": "西安首条地铁线路开通，西安成为西北地区首个开通地铁的城市。",
     "source": "西安地铁官网",
     "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Xi%27an_Metro_Line_2_train.jpg/640px-Xi%27an_Metro_Line_2_train.jpg"
   },
   {
+    "year": 2012,
+    "title": "三星存储芯片项目落户高新区",
+    "category": "经济",
+    "lat": 34.2060,
+    "lng": 108.8560,
+    "desc": "三星电子存储芯片项目正式签约落户西安高新区，成为当时电子信息行业重大外资项目。",
+    "source": "公开新闻报道"
+  },
+  {
+    "year": 2013,
+    "title": "西安地铁1号线开通",
+    "category": "交通",
+    "lat": 34.3410,
+    "lng": 108.8910,
+    "desc": "1号线通车,与2号线构筑起西安地铁线网的十字骨架。",
+    "source": "西安地铁官网"
+  },
+  {
+    "year": 2013,
+    "title": "西安领事馆区落户浐灞",
+    "category": "规划",
+    "lat": 34.3870,
+    "lng": 109.0430,
+    "desc": "外交部正式批复在浐灞生态区启动西安领事馆区建设，打造对外交流平台。",
+    "source": "陕西省外办/央视网"
+  },
+  {
     "year": 2014,
     "title": "西咸新区获批国家级新区",
-    "category": "规划",
+    "category": "区划",
     "lat": 34.3270,
     "lng": 108.7320,
-    "desc": "国务院正式批复设立西咸新区，成为全国第七个国家级新区。",
+    "desc": "国务院正式批复设立西咸新区，成为全国第七个国家级新区，推进西安与咸阳一体化。",
     "source": "国务院公开批复",
-    "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/Xi%27an_Skyline.jpg/640px-Xi%27an_Skyline.jpg"
+    "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Xixian_New_Area.jpg/640px-Xixian_New_Area.jpg"
+  },
+  {
+    "year": 2014,
+    "title": "高陵撤县设区正式挂牌",
+    "category": "区划",
+    "lat": 34.5340,
+    "lng": 109.0890,
+    "desc": "高陵县撤县设区,成为西安市第10个市辖区,城市空间向渭北方向拓展。",
+    "source": "陕西省民政厅"
+  },
+  {
+    "year": 2016,
+    "title": "西安地铁3号线开通",
+    "category": "交通",
+    "lat": 34.2180,
+    "lng": 108.9640,
+    "desc": "3号线开通串联鱼化寨与保税区,连接高新区、主城区与东北部区域。",
+    "source": "西安地铁官网"
+  },
+  {
+    "year": 2017,
+    "title": "西安代管西咸新区",
+    "category": "区划",
+    "lat": 34.3270,
+    "lng": 108.7320,
+    "desc": "西安市全面代管西咸新区，形成大西安发展格局，推动重大项目与市政交通统一规划。",
+    "source": "公开政策文件"
   },
   {
     "year": 2018,
@@ -25,48 +99,190 @@
     "category": "规划",
     "lat": 34.3416,
     "lng": 108.9398,
-    "desc": "国家发改委支持西安建设国家中心城市，城市能级全面提升。",
-    "source": "公开政策文件",
-    "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/16/Xi%27an_wall_by_night.jpg/640px-Xi%27an_wall_by_night.jpg"
+    "desc": "国家发改委支持西安建设国家中心城市，城市能级与辐射范围全面提升。",
+    "source": "国家发改委"
   },
   {
     "year": 2018,
-    "title": "大唐不夜城步行街提升开街",
+    "title": "西安地铁4号线开通",
+    "category": "交通",
+    "lat": 34.3030,
+    "lng": 108.9640,
+    "desc": "4号线通车,穿越古城核心区连接西安北站与航天新城,线网运营里程突破100公里。",
+    "source": "西安地铁官网"
+  },
+  {
+    "year": 2018,
+    "title": "大唐不夜城步行街全面提升开街",
     "category": "文化",
     "lat": 34.2185,
     "lng": 108.9605,
-    "desc": "街区全面改造升级为高品质步行街，成为西安城市名片。",
-    "source": "央广网",
-    "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6e/Datang_Everbright_City.jpg/640px-Datang_Everbright_City.jpg"
+    "desc": "街区全面改造升级为高品质步行街，此后成为全国文旅示范街区与西安城市名片。",
+    "source": "商务部/央广网"
+  },
+  {
+    "year": 2019,
+    "title": "西安地铁1号线二期通车",
+    "category": "交通",
+    "lat": 34.3270,
+    "lng": 108.7490,
+    "desc": "1号线延伸至西咸新区沣河森林公园,西安地铁线网首次跨越沣河进入西咸区域。",
+    "source": "西安地铁官网"
+  },
+  {
+    "year": 2019,
+    "title": "机场城际铁路开通运营",
+    "category": "交通",
+    "lat": 34.4460,
+    "lng": 108.7610,
+    "desc": "西安北客站至机场城际轨道开通，实现高铁与航空枢纽的轨道互联。",
+    "source": "陕西城际铁路公司"
   },
   {
     "year": 2020,
-    "title": "西安奥体中心一场两馆竣工",
+    "title": "西安地铁5号线、6号线一期、9号线开通",
+    "category": "交通",
+    "lat": 34.2490,
+    "lng": 108.9080,
+    "desc": "三线同期开通,地铁运营里程跨入200公里阵营,高新区与主城区联系显著加强。",
+    "source": "西安地铁官网"
+  },
+  {
+    "year": 2020,
+    "title": "西安奥体中心一场两馆竣工交付",
     "category": "文化",
     "lat": 34.3760,
     "lng": 109.0260,
-    "desc": "作为第十四届全运会主场馆，西北地区大型体育中心全面建成。",
+    "desc": "作为第十四届全运会主场馆，主体育场与游泳跳水馆顺利交付，西北地区大型体育中心全面建成。",
     "source": "西安市政府新闻发布",
     "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Xi%27an_Olympic_Sports_Center_Stadium.jpg/640px-Xi%27an_Olympic_Sports_Center_Stadium.jpg"
   },
   {
+    "year": 2020,
+    "title": "西安咸阳国际机场三期扩建工程开工",
+    "category": "交通",
+    "lat": 34.4420,
+    "lng": 108.7630,
+    "desc": "机场三期扩建工程正式开,规划建设北二跑道及T5航站楼等枢纽工程。",
+    "source": "西部机场集团"
+  },
+  {
     "year": 2021,
     "title": "幸福林带正式对外开放",
-    "category": "文化",
+    "category": "生态",
     "lat": 34.2680,
     "lng": 108.9940,
-    "desc": "全国最大的城市景观林带对外开放，包含地下商业与综合管廊。",
+    "desc": "全国最大的城市景观林带正式对外开放，地下一层为商业与市政交通，地下二层为综合管廊。",
     "source": "公开新闻报道",
     "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Xingfu_Forest_Belt.jpg/640px-Xingfu_Forest_Belt.jpg"
   },
   {
+    "year": 2021,
+    "title": "西安地铁14号线开通",
+    "category": "交通",
+    "lat": 34.3850,
+    "lng": 109.0120,
+    "desc": "连接西安北客站、奥体中心与贺韶，服务全运会交通保障。",
+    "source": "西安地铁官网"
+  },
+  {
+    "year": 2022,
+    "title": "西户铁路开通载客",
+    "category": "交通",
+    "lat": 34.2180,
+    "lng": 108.6230,
+    "desc": "西户铁路开通运营，利用既有铁路通道服务西安主城区与鄠邑区通勤。",
+    "source": "中国铁路西安局"
+  },
+  {
+    "year": 2022,
+    "title": "西安地铁6号线二期开通",
+    "category": "交通",
+    "lat": 34.2580,
+    "lng": 108.9620,
+    "desc": "6号线二期穿过古城核心区,连接西北工业大学与纺织城方向，完善东西向轨道通道。",
+    "source": "西安地铁官网"
+  },
+  {
+    "year": 2023,
+    "title": "西安地铁16号线一期开通",
+    "category": "交通",
+    "lat": 34.2250,
+    "lng": 108.7920,
+    "desc": "陕西省首条全自动运行线路，串联西咸新区秦创原中心与诗经里。",
+    "source": "西安地铁官网"
+  },
+  {
+    "year": 2023,
+    "title": "西安地铁1号线三期开通延伸至咸阳",
+    "category": "交通",
+    "lat": 34.3420,
+    "lng": 108.7060,
+    "desc": "线路跨过渭河延伸进入咸阳市主城区，西安地铁轨道网进一步向西安都市圈扩展。",
+    "source": "西安地铁官网"
+  },
+  {
+    "year": 2023,
+    "title": "西安地铁2号线二期开通",
+    "category": "交通",
+    "lat": 34.3600,
+    "lng": 108.9460,
+    "desc": "2号线南北延伸,向南服务常宁新区与长安大学城，向北连接草滩片区。",
+    "source": "西安地铁官网"
+  },
+  {
+    "year": 2023,
+    "title": "西安都市圈发展规划获国家批复",
+    "category": "规划",
+    "lat": 34.3416,
+    "lng": 108.9398,
+    "desc": "国家发展改革委批复《西安都市圈发展规划》，推动西安与周边城市协同发展。",
+    "source": "国家发改委"
+  },
+  {
     "year": 2024,
-    "title": "西安地铁8号（环）线开通",
+    "title": "西安地铁10号线一期开通",
+    "category": "交通",
+    "lat": 34.4250,
+    "lng": 109.0120,
+    "desc": "线路跨越渭河连接高陵区，服务北部先进制造业板块与主城区通勤。",
+    "source": "西安地铁官网"
+  },
+  {
+    "year": 2024,
+    "title": "西安地铁8号(环)线开通",
     "category": "交通",
     "lat": 34.2980,
     "lng": 108.9470,
-    "desc": "西安首条地铁环线投入运营，线网总里程突破400公里。",
+    "desc": "西安首条地铁环线投入初期运营,串联主城区多个放射状线路,地铁线网总里程突破400公里。",
     "source": "西安地铁官网",
     "image": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Xi%27an_Metro_Line_8_Map.png/640px-Xi%27an_Metro_Line_8_Map.png"
+  },
+  {
+    "year": 2024,
+    "title": "机场三期北二跑道投运与T5航站楼落成",
+    "category": "交通",
+    "lat": 34.4480,
+    "lng": 108.7660,
+    "desc": "北二跑道正式投运、T5航站楼落成,机场枢纽保障能力进一步提升。",
+    "source": "西部机场集团"
+  },
+  {
+    "year": 2024,
+    "title": "秦岭北麓生态保护修复工程持续推进",
+    "category": "生态",
+    "lat": 34.0500,
+    "lng": 108.8500,
+    "desc": "西安市持续深化秦岭生态环境保护，实施多项生态修复与峪口治理工程。",
+    "source": "西安市政府"
+  },
+  {
+    "year": 2024,
+    "title": "西安咸阳国际机场T5航站楼正式投运",
+    "category": "交通",
+    "lat": 34.4450,
+    "lng": 108.7600,
+    "desc": "T5航站楼正式投入使用,西安国际航空枢纽保障能力实现历史性跨越。",
+    "source": "西部机场集团"
   }
 ]
