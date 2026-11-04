@@ -19,41 +19,100 @@
             flex-direction: column; 
             height: 100vh; 
             overflow: hidden; 
-            font-family: sans-serif; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         }
+
+        /* 顶部导航栏 */
+        #top-bar {
+            height: 60px;
+            background-color: #ffffff;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 1000;
+        }
+
+        #top-bar h1 {
+            font-size: 18px;
+            margin: 0;
+            color: #333;
+            white-space: nowrap;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        #search-input {
+            width: 200px;
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        #search-input:focus {
+            border-color: #5470c6;
+            box-shadow: 0 0 5px rgba(84, 112, 198, 0.3);
+        }
+
+        .category-filters label {
+            cursor: pointer;
+            font-size: 14px;
+            color: #555;
+            display: inline-flex;
+            align-items: center;
+            margin-right: 10px;
+        }
+
+        .category-filters input[type="checkbox"] {
+            margin-right: 4px;
+            cursor: pointer;
+        }
+
+        /* 右侧统计信息 */
+        #stats-text {
+            font-size: 14px;
+            color: #666;
+            font-weight: bold;
+        }
+
+        /* 地图和图表容器 */
         #map { 
-            height: 65vh; 
+            flex: 1; 
             width: 100%; 
         }
         #chart { 
             height: 35vh; 
             width: 100%; 
-            background: #fff; 
-        }
-        /* 右上角图例样式 */
-        .legend {
-            background: white; 
-            padding: 10px; 
-            border-radius: 5px;
-            box-shadow: 0 1px 5px rgba(0,0,0,0.4); 
-            line-height: 1.5; 
-            font-size: 14px;
-        }
-        .legend i { 
-            width: 12px; 
-            height: 12px; 
-            float: left; 
-            margin-right: 8px; 
-            margin-top: 4px; 
-            border-radius: 50%; 
+            background: #fff;
+            border-top: 1px solid #eee;
         }
     </style>
 </head>
 <body>
-    <!-- 左上角搜索框 -->
-    <div id="search-container" style="position: absolute; top: 10px; left: 60px; z-index: 1000; background: white; padding: 10px; border-radius: 5px; box-shadow: 0 1px 5px rgba(0,0,0,0.4);">
-        <input type="text" id="search-input" placeholder="搜索关键词（如：地铁、规划）..." style="width: 250px; padding: 5px; border: 1px solid #ccc; border-radius: 3px; outline: none;">
-    </div>
+    <!-- 顶部看板 -->
+    <header id="top-bar">
+        <h1>🗺️ 西安城市发展档案</h1>
+        
+        <div class="controls">
+            <input type="text" id="search-input" placeholder="搜索关键词（如：地铁、规划）...">
+            
+            <!-- 分类勾选框 -->
+            <div class="category-filters">
+                <label><input type="checkbox" class="cat-filter" value="交通" checked> <span style="color:#007bff;">交通</span></label>
+                <label><input type="checkbox" class="cat-filter" value="规划" checked> <span style="color:#dc3545;">规划</span></label>
+                <label><input type="checkbox" class="cat-filter" value="文化" checked> <span style="color:#28a745;">文化</span></label>
+            </div>
+        </div>
+
+        <div id="stats-text">加载中...</div>
+    </header>
 
     <!-- 地图和图表容器 -->
     <div id="map"></div>
@@ -84,14 +143,14 @@
             }
         });
 
-        // 使用国内极速的高德地图底图
+        // 高德地图底图
         L.tileLayer('https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
             maxZoom: 19, 
             attribution: '© 高德地图'
         }).addTo(map);
 
         // ==========================================
-        // 2. 初始化 ECharts 实例
+        // 2. 初始化 ECharts 实例与全局变量
         // ==========================================
         const chartDom = document.getElementById('chart');
         const myChart = echarts.init(chartDom);
@@ -101,7 +160,7 @@
         let currentGeoJsonLayer = null;
 
         // ==========================================
-        // 3. 事件分类颜色映射
+        // 3. 分类颜色映射
         // ==========================================
         function getColor(category) {
             if (category === '交通') return '#007bff'; // 蓝
@@ -124,28 +183,11 @@
             const currentYear = new Date(map.timeDimension.getCurrentTime()).getFullYear();
 
             const option = {
-                title: { 
-                    text: '西安城市发展事件年份分布', 
-                    left: 'center', 
-                    textStyle: { fontSize: 14 } 
-                },
+                title: { text: '西安城市发展事件年份分布', left: 'center', textStyle: { fontSize: 14 } },
                 tooltip: { trigger: 'axis' },
-                grid: { 
-                    left: '5%', 
-                    right: '5%', 
-                    bottom: '10%', 
-                    top: '20%', 
-                    containLabel: true 
-                },
-                xAxis: { 
-                    type: 'category', 
-                    data: years, 
-                    axisLabel: { interval: 0 } 
-                },
-                yAxis: { 
-                    type: 'value', 
-                    minInterval: 1 
-                },
+                grid: { left: '5%', right: '5%', bottom: '10%', top: '20%', containLabel: true },
+                xAxis: { type: 'category', data: years, axisLabel: { interval: 0 } },
+                yAxis: { type: 'value', minInterval: 1 },
                 series: [{
                     name: '事件数', 
                     type: 'bar', 
@@ -170,10 +212,7 @@
                 type: 'FeatureCollection',
                 features: events.map(e => ({
                     type: 'Feature',
-                    geometry: { 
-                        type: 'Point', 
-                        coordinates: [e.lng, e.lat] 
-                    },
+                    geometry: { type: 'Point', coordinates: [e.lng, e.lat] },
                     properties: { 
                         time: `${e.year}-01-01`, 
                         title: e.title, 
@@ -188,13 +227,12 @@
         }
 
         // ==========================================
-        // 6. 核心渲染逻辑（含图片弹窗）
+        // 6. 核心渲染逻辑（地图）
         // ==========================================
         function renderData(eventsArray) {
             if (currentTimeLayer) { map.removeLayer(currentTimeLayer); }
             if (currentGeoJsonLayer) { map.removeLayer(currentGeoJsonLayer); }
 
-            updateChartData(eventsArray);
             const geojsonData = eventsToGeoJSON(eventsArray);
 
             currentGeoJsonLayer = L.geoJSON(geojsonData, {
@@ -202,15 +240,11 @@
                     return L.circleMarker(latlng, {
                         radius: 8, 
                         fillColor: getColor(feature.properties.category),
-                        color: '#fff', 
-                        weight: 2, 
-                        opacity: 1, 
-                        fillOpacity: 0.8
+                        color: '#fff', weight: 2, opacity: 1, fillOpacity: 0.8
                     });
                 },
                 onEachFeature: function (feature, layer) {
                     const p = feature.properties;
-                    // 加了 referrerpolicy 绕过防盗链
                     let imageTag = p.image ? `<img src="${p.image}" referrerpolicy="no-referrer" style="width: 100%; height: 140px; object-fit: cover; border-radius: 4px; margin-bottom: 8px;">` : '';
                     
                     const popupHTML = `
@@ -227,54 +261,57 @@
             });
 
             currentTimeLayer = L.timeDimension.layer.geoJson(currentGeoJsonLayer, {
-                updateTimeDimension: true, 
-                addlastPoint: true, 
-                waitForReady: true
+                updateTimeDimension: true, addlastPoint: true, waitForReady: true
             });
             currentTimeLayer.addTo(map);
         }
 
         // ==========================================
-        // 7. 主流程与事件监听
+        // 7. 统一过滤逻辑（搜索 + 分类勾选）
+        // ==========================================
+        function getFilteredEvents() {
+            const keyword = document.getElementById('search-input').value.trim();
+            const selectedCats = Array.from(document.querySelectorAll('.cat-filter:checked')).map(cb => cb.value);
+            
+            return allEvents.filter(item => {
+                // 匹配搜索词
+                const matchKeyword = keyword === '' || item.title.includes(keyword) || item.desc.includes(keyword) || item.category.includes(keyword);
+                // 匹配勾选的分类
+                const matchCategory = selectedCats.includes(item.category);
+                return matchKeyword && matchCategory;
+            });
+        }
+
+        function applyFilters() {
+            const filtered = getFilteredEvents();
+            // 更新右侧统计
+            document.getElementById('stats-text').textContent = `当前展示 ${filtered.length} / 共 ${allEvents.length} 个事件`;
+            // 重新渲染地图和图表
+            updateChartData(filtered);
+            renderData(filtered);
+        }
+
+        // ==========================================
+        // 8. 主流程与事件监听
         // ==========================================
         fetch('events.json')
             .then(response => response.json())
             .then(events => {
                 allEvents = events;
-                renderData(allEvents); // 初次渲染
+                applyFilters(); // 初次加载过滤
 
-                // 添加右上角图例
-                const legend = L.control({ position: 'topright' });
-                legend.onAdd = function (map) {
-                    const div = L.DomUtil.create('div', 'legend');
-                    div.innerHTML += '<b>事件类型</b><br>';
-                    div.innerHTML += '<i style="background: #007bff"></i>交通<br>';
-                    div.innerHTML += '<i style="background: #dc3545"></i>规划<br>';
-                    div.innerHTML += '<i style="background: #28a745"></i>文化';
-                    return div;
-                };
-                legend.addTo(map);
+                // 监听搜索框输入
+                document.getElementById('search-input').addEventListener('input', applyFilters);
 
-                // 监听搜索框
-                document.getElementById('search-input').addEventListener('input', function(e) {
-                    const keyword = e.target.value.trim();
-                    if (keyword === '') { 
-                        renderData(allEvents); 
-                    } else {
-                        const filtered = allEvents.filter(item => 
-                            item.title.includes(keyword) || item.desc.includes(keyword) || item.category.includes(keyword)
-                        );
-                        renderData(filtered);
-                    }
+                // 监听勾选框变化
+                document.querySelectorAll('.cat-filter').forEach(cb => {
+                    cb.addEventListener('change', applyFilters);
                 });
 
                 // 时间轴联动图表颜色
                 map.timeDimension.on('timeload', function(e) {
-                    const keyword = document.getElementById('search-input').value.trim();
-                    const currentData = keyword === '' ? allEvents : allEvents.filter(item => 
-                        item.title.includes(keyword) || item.desc.includes(keyword) || item.category.includes(keyword)
-                    );
-                    updateChartData(currentData);
+                    const filtered = getFilteredEvents();
+                    updateChartData(filtered);
                 });
 
                 // 点击图表联动时间轴
@@ -288,9 +325,7 @@
             .catch(error => console.error('加载 events.json 失败:', error));
 
         // 窗口自适应
-        window.addEventListener('resize', function() { 
-            myChart.resize(); 
-        });
+        window.addEventListener('resize', function() { myChart.resize(); });
     </script>
 </body>
 </html>
