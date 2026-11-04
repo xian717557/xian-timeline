@@ -7,19 +7,26 @@
     
     <!-- 1. Leaflet 核心样式 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
-    
+        <!-- 引入 ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <!-- 2. TimeDimension 插件样式和依赖 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-timedimension@1.1.1/dist/leaflet.timedimension.control.min.css" />
     
     <style>
-        body { margin: 0; padding: 0; }
-        #map { height: 100vh; width: 100%; }
+        body { margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; }
+        /* 地图占上面 70% 的高度 */
+        #map { height: 70vh; width: 100%; }
+        /* 图表占下面 30% 的高度 */
+        #chart { height: 30vh; width: 100%; background: #fff; }
     </style>
 </head>
 <body>
     <!-- 地图容器 -->
     <div id="map"></div>
-
+    <!-- 地图容器 -->
+    <div id="map"></div>
+    <!-- 图表容器 -->
+    <div id="chart"></div>
     <!-- 3. Leaflet 核心 JS -->
     <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
     
@@ -29,7 +36,7 @@
     
     <!-- 5. 我们的业务代码 -->
     <script>
-        // 初始化地图，启用时间维度控件
+        // --- 1. 初始化地图 ---
         const map = L.map('map', {
             center: [34.3416, 108.9398],
             zoom: 11,
@@ -45,22 +52,69 @@
             }
         });
 
-        // 添加底图
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '© <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
 
-        // 将 events 数组转换为 GeoJSON
+        // --- 2. 初始化 ECharts 实例 ---
+        const chartDom = document.getElementById('chart');
+        const myChart = echarts.init(chartDom);
+        
+        // 用来存放全局的数据和图表实例
+        let allEvents = [];
+        let geojsonData = null;
+
+        // --- 3. 核心函数：渲染/更新 ECharts 柱状图 ---
+        // 参数 currentYear 是地图时间轴当前所在的年份
+        function updateChart(currentYear) {
+            // 统计每一年的数据量
+            const yearCounts = {};
+            allEvents.forEach(e => {
+                yearCounts[e.year] = (yearCounts[e.year] || 0) + 1;
+            });
+            
+            // 提取年份和对应的数量，按年份排序
+            const years = Object.keys(yearCounts).sort((a, b) => a - b);
+            const counts = years.map(y => yearCounts[y]);
+
+            // 设置 ECharts 的配置
+            const option = {
+                title: { text: '西安城市发展事件年份分布', left: 'center', textStyle: { fontSize: 14 } },
+                tooltip: { trigger: 'axis' },
+                grid: { left: '5%', right: '5%', bottom: '10%', top: '20%', containLabel: true },
+                xAxis: { 
+                    type: 'category', 
+                    data: years,
+                    axisLabel: { interval: 0 } // 强制显示所有年份
+                },
+                yAxis: { type: 'value', minInterval: 1 }, // 只显示整数
+                series: [{
+                    name: '事件数',
+                    type: 'bar',
+                    data: counts,
+                    // 判断当前柱子是不是地图时间轴所在的年份，如果是就变色
+                    itemStyle: {
+                        color: function(params) {
+                            const year = parseInt(years[params.dataIndex]);
+                            // 如果当前柱子的年份 <= 时间轴的年份，显示蓝色，否则显示灰色
+                            return year <= currentYear ? '#5470c6' : '#e0e0e0';
+                        }
+                    },
+                    barMaxWidth: 40
+                }]
+            };
+            
+            myChart.setOption(option);
+        }
+
+        // --- 4. 将 events 数组转换为 GeoJSON ---
         function eventsToGeoJSON(events) {
             return {
                 type: 'FeatureCollection',
                 features: events.map(e => ({
                     type: 'Feature',
-                    geometry: {
-                        type: 'Point',
-                        coordinates: [e.lng, e.lat]
-                    },
+                    geometry: { type: 'Point', coordinates: [e.lng, e.lat] },
                     properties: {
                         time: `${e.year}-01-01`,
                         title: e.title,
@@ -73,20 +127,21 @@
             };
         }
 
-        // 加载数据并渲染
+        // --- 5. 加载数据并启动 ---
         fetch('events.json')
             .then(response => response.json())
             .then(events => {
-                const geojsonData = eventsToGeoJSON(events);
+                allEvents = events;
+                geojsonData = eventsToGeoJSON(events);
 
+                // 初始化图表（传入起始年份，比如最早的 2011）
+                updateChart(2011);
+
+                // 创建地图图层
                 const geoJsonLayer = L.geoJSON(geojsonData, {
                     onEachFeature: function (feature, layer) {
                         const p = feature.properties;
-                        const popupHTML = `
-                            <b>${p.year} · ${p.title}</b><br>
-                            ${p.desc}<br>
-                            <small>来源：${p.source}</small>
-                        `;
+                        const popupHTML = `<b>${p.year} · ${p.title}</b><br>${p.desc}<br><small>来源：${p.source}</small>`;
                         layer.bindPopup(popupHTML);
                         layer.bindTooltip(`${p.year} · ${p.title}`);
                     }
@@ -100,8 +155,24 @@
                 });
 
                 timeLayer.addTo(map);
+
+                // --- 6. 终极联动：监听地图时间轴的变化 ---
+                // 当地图的时间轴发生变动时，重新渲染柱状图
+                map.timeDimension.on('timeload', function(e) {
+                    // 获取当前时间轴的日期对象
+                    const currentDate = new Date(map.timeDimension.getCurrentTime());
+                    const currentYear = currentDate.getFullYear();
+                    // 更新图表
+                    updateChart(currentYear);
+                });
+
             })
             .catch(error => console.error('加载 events.json 失败:', error));
+
+        // --- 7. 窗口大小改变时，图表自适应 ---
+        window.addEventListener('resize', function() {
+            myChart.resize();
+        });
     </script>
 </body>
 </html>
