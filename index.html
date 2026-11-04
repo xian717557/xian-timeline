@@ -18,6 +18,23 @@
         #map { height: 70vh; width: 100%; }
         /* 图表占下面 30% 的高度 */
         #chart { height: 30vh; width: 100%; background: #fff; }
+     /* 图例样式 */
+.legend {
+    background: white;
+    padding: 10px;
+    border-radius: 5px;
+    box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+    line-height: 1.5;
+    font-size: 14px;
+}
+.legend i {
+    width: 12px;
+    height: 12px;
+    float: left;
+    margin-right: 8px;
+    margin-top: 4px;
+    border-radius: 50%;
+}   
     </style>
 </head>
 <body>
@@ -104,7 +121,15 @@
                     barMaxWidth: 40
                 }]
             };
-            
+            // 绑定点击事件：点击柱子，地图时间轴跳转
+myChart.off('click'); // 先解绑之前的，防止重复触发
+myChart.on('click', function (params) {
+    const clickedYear = parseInt(params.name); // 获取点击的年份
+    // 构造该年的日期时间戳（1月1日）
+    const targetDate = new Date(`${clickedYear}-01-01T00:00:00`);
+    // 调用插件 API 跳转时间
+    map.timeDimension.setCurrentTime(targetDate.getTime());
+});
             myChart.setOption(option);
         }
 
@@ -138,14 +163,33 @@
                 updateChart(2011);
 
                 // 创建地图图层
-                const geoJsonLayer = L.geoJSON(geojsonData, {
-                    onEachFeature: function (feature, layer) {
-                        const p = feature.properties;
-                        const popupHTML = `<b>${p.year} · ${p.title}</b><br>${p.desc}<br><small>来源：${p.source}</small>`;
-                        layer.bindPopup(popupHTML);
-                        layer.bindTooltip(`${p.year} · ${p.title}`);
-                    }
-                });
+// 定义颜色映射规则
+function getColor(category) {
+    if (category === '交通') return '#007bff'; // 蓝色
+    if (category === '规划') return '#dc3545'; // 红色
+    if (category === '文化') return '#28a745'; // 绿色
+    return '#6c757d'; // 默认灰色
+}
+
+const geoJsonLayer = L.geoJSON(geojsonData, {
+    // 新增 pointToLayer 属性，自定义标记的样式
+    pointToLayer: function (feature, latlng) {
+        return L.circleMarker(latlng, {
+            radius: 8,              // 圆圈大小
+            fillColor: getColor(feature.properties.category),
+            color: '#fff',          // 圆圈边框颜色
+            weight: 2,              // 边框粗细
+            opacity: 1,
+            fillOpacity: 0.8
+        });
+    },
+    onEachFeature: function (feature, layer) {
+        const p = feature.properties;
+        const popupHTML = `<b>${p.year} · ${p.title}</b><br>${p.desc}<br><small>来源：${p.source}</small>`;
+        layer.bindPopup(popupHTML);
+        layer.bindTooltip(`${p.year} · ${p.title}`);
+    }
+});
 
                 // 包装成时间图层
                 const timeLayer = L.timeDimension.layer.geoJson(geoJsonLayer, {
@@ -155,7 +199,17 @@
                 });
 
                 timeLayer.addTo(map);
-
+// 添加图例
+const legend = L.control({ position: 'topright' });
+legend.onAdd = function (map) {
+    const div = L.DomUtil.create('div', 'legend');
+    div.innerHTML += '<b>事件类型</b><br>';
+    div.innerHTML += '<i style="background: #007bff"></i>交通<br>';
+    div.innerHTML += '<i style="background: #dc3545"></i>规划<br>';
+    div.innerHTML += '<i style="background: #28a745"></i>文化';
+    return div;
+};
+legend.addTo(map);
                 // --- 6. 终极联动：监听地图时间轴的变化 ---
                 // 当地图的时间轴发生变动时，重新渲染柱状图
                 map.timeDimension.on('timeload', function(e) {
