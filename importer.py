@@ -1,5 +1,46 @@
 import json
 
+import json
+
+# ✨ 新增：简单的关键词映射，让政策自动落到对应区域
+LOCATION_MAP = {
+    "高新": [34.2060, 108.8560],
+    "浐灞": [34.3870, 109.0430],
+    "经开": [34.3500, 108.9000],
+    "西咸": [34.3270, 108.7320],
+    "曲江": [34.2180, 108.9600],
+    "长安": [34.1500, 108.9400],
+    "高陵": [34.5340, 109.0890],
+    "鄠邑": [34.1000, 108.6000],
+    "临潼": [34.3600, 109.2100],
+    "秦岭": [34.0500, 108.8500]
+}
+
+def get_coords(title):
+    for key, coords in LOCATION_MAP.items():
+        if key in title:
+            return coords[0], coords[1]
+    # 如果标题里没有地名，默认丢在市中心
+    return 34.3416, 108.9398
+
+def merge_data():
+    # ... (前面读取文件代码不变) ...
+    
+    for policy in new_policies:
+        if policy['title'] not in existing_titles:
+            lat, lng = get_coords(policy['title']) # ✨ 调用函数获取坐标
+            
+            new_event = {
+                "year": policy['year'],
+                "title": policy['title'],
+                "category": "政策", # ✨ 给个新分类
+                "lat": lat,
+                "lng": lng,
+                "desc": f"来源：西安市政府官网。{policy['title']}",
+                "source": "西安市政府官网",
+                "link": policy['link']
+            }
+            # ... (后续追加和排序代码不变) ...
 def merge_data():
     # 1. 读取现有数据
     try:

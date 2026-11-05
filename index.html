@@ -32,7 +32,6 @@
         .category-filters { display: flex; flex-wrap: wrap; gap: 5px; }
         .category-filters label { cursor: pointer; font-size: 13px; color: #555; display: inline-flex; align-items: center; }
         
-        /* 热力图开关样式 */
         .heat-toggle { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: bold; color: #d9534f; cursor: pointer; background: #ffebe8; padding: 4px 10px; border-radius: 15px; }
         .heat-toggle input { cursor: pointer; }
 
@@ -56,6 +55,9 @@
         .panel-meta { font-size: 13px; color: #888; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
         .panel-meta span { display: inline-block; padding: 2px 8px; border-radius: 12px; background: #f0f0f0; margin-right: 10px; }
         #panel-desc { font-size: 15px; color: #444; line-height: 1.8; margin-bottom: 20px; }
+        
+        /* 原文链接按钮样式 */
+        #panel-link { display: inline-block; margin-top: 10px; padding: 8px 15px; background: #007bff; color: #fff; text-decoration: none; border-radius: 5px; font-size: 14px; }
 
         @media screen and (max-width: 768px) {
             #top-bar { padding: 10px; flex-direction: column; align-items: flex-start; gap: 8px; }
@@ -88,8 +90,9 @@
                 <label><input type="checkbox" class="cat-filter" value="经济" checked> <span style="color:#6f42c1;">经济</span></label>
                 <label><input type="checkbox" class="cat-filter" value="生态" checked> <span style="color:#17a2b8;">生态</span></label>
                 <label><input type="checkbox" class="cat-filter" value="区划" checked> <span style="color:#fd7e14;">区划</span></label>
+                <!-- ✨ 新增：政策分类 -->
+                <label><input type="checkbox" class="cat-filter" value="政策" checked> <span style="color:#e83e8c;">政策</span></label>
             </div>
-            <!-- 热力图开关 -->
             <label class="heat-toggle">
                 <input type="checkbox" id="heat-mode-toggle"> 🔥 热力图模式
             </label>
@@ -107,6 +110,8 @@
             <span>来源：<span id="panel-source"></span></span>
         </div>
         <p id="panel-desc"></p>
+        <!-- ✨ 新增：原文链接 -->
+        <a id="panel-link" href="#" target="_blank">阅读政策原文</a>
     </div>
 
     <div id="map"></div>
@@ -121,7 +126,6 @@
     <script src="https://cdn.jsdelivr.net/npm/leaflet-timedimension@1.1.1/dist/leaflet.timedimension.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-ant-path@1.3.0/dist/leaflet-ant-path.js"></script>
-    <!-- 引入热力图插件 -->
     <script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     
     <script>
@@ -143,9 +147,10 @@
         
         let allEvents = [];
         let currentGeoJsonLayer = null;
+               let heatLayer = null; 
+        let polygonLayer = null; // ✨ 新增：用来存区划面图层 
         let currentMarkers = [];
-        let heatLayer = null; // 热力图图层实例
-        let isHeatMode = false; // 是否处于热力图模式
+        let isHeatMode = false; 
 
         let chartUpdateTimeout = null;
         function debouncedUpdateChart() {
@@ -163,6 +168,7 @@
             if (category === '经济') return '#6f42c1';
             if (category === '生态') return '#17a2b8';
             if (category === '区划') return '#fd7e14';
+            if (category === '政策') return '#e83e8c'; // ✨ 新增：政策颜色
             return '#6c757d';
         }
 
@@ -207,7 +213,8 @@
                 features: events.map(e => ({
                     type: 'Feature',
                     geometry: { type: 'Point', coordinates: [e.lng, e.lat] },
-                    properties: { time: `${e.year}-01-01`, title: e.title, year: e.year, category: e.category, desc: e.desc, source: e.source, image: e.image }
+                    // ✨ 新增：将 link 也传给前端
+                    properties: { time: `${e.year}-01-01`, title: e.title, year: e.year, category: e.category, desc: e.desc, source: e.source, image: e.image, link: e.link }
                 }))
             };
         }
@@ -217,7 +224,6 @@
             if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
             currentMarkers = [];
 
-            // 1. 画线
             eventsArray.forEach(e => {
                 if (e.path && e.path.length > 0) {
                     const antLine = L.polyline.antPath(e.path, {
@@ -230,7 +236,6 @@
                 }
             });
 
-            // 2. 画点
             const geojsonData = eventsToGeoJSON(eventsArray);
             currentGeoJsonLayer = L.geoJSON(geojsonData, {
                 pointToLayer: function (feature, latlng) {
@@ -241,6 +246,7 @@
                     currentMarkers.push(layer);
                     const p = feature.properties;
                     layer.bindTooltip(`${p.year} · ${p.title}`, { direction: 'top', offset: [0, -10] });
+                    
                     layer.on('click', function() {
                         const panel = document.getElementById('side-panel');
                         document.getElementById('panel-title').textContent = `${p.year} · ${p.title}`;
@@ -248,43 +254,46 @@
                         document.getElementById('panel-year').textContent = p.year + '年';
                         document.getElementById('panel-category').textContent = p.category;
                         document.getElementById('panel-source').textContent = p.source;
+                        
                         const imgEl = document.getElementById('panel-img');
-                        if (p.image) { imgEl.src = p.image; imgEl.style.display = 'block'; } else { imgEl.style.display = 'none'; }
+                        if (p.image) { imgEl.src = p.image; imgEl.style.display = 'block'; } 
+                        else { imgEl.style.display = 'none'; }
+
+                        // ✨ 新增：判断是否有链接，有就显示按钮并赋值
+                        const linkEl = document.getElementById('panel-link');
+                        if (p.link) { 
+                            linkEl.href = p.link; 
+                            linkEl.style.display = 'inline-block'; 
+                        } else { 
+                            linkEl.style.display = 'none'; 
+                        }
+
                         panel.classList.add('active');
                     });
                 }
             });
             currentGeoJsonLayer.addTo(map);
 
-            // 3. 生成热力图数据 (先准备好，是否显示由 filterMarkersByTime 决定)
-            const heatPoints = eventsArray.map(e => [e.lat, e.lng, 1]); // [纬度, 经度, 权重]
-heatLayer = L.heatLayer(heatPoints, {
-    radius: 35, 
-    blur: 20, 
-    maxZoom: 13,
-    willReadFrequently: true, // ✨ 新增：优化 Canvas 渲染性能，消除警告
-    gradient: {0.4: 'blue', 0.6: 'lime', 0.8: 'yellow', 1: 'red'}
-});
+            const heatPoints = eventsArray.map(e => [e.lat, e.lng, 1]); 
+            heatLayer = L.heatLayer(heatPoints, {
+                radius: 35, 
+                blur: 20, 
+                maxZoom: 13,
+                willReadFrequently: true, 
+                gradient: {0.4: 'blue', 0.6: 'lime', 0.8: 'yellow', 1: 'red'}
+            });
 
             filterMarkersByTime();
         }
-
-        // ✨ 核心逻辑：根据是否开启热力图，切换显示内容
         function filterMarkersByTime() {
-            // 如果地图或时间维度尚未初始化完成，直接返回，避免空指针报错
             if (!map || !map.timeDimension) return;
-            
             const currentYear = new Date(map.timeDimension.getCurrentTime()).getFullYear();
             
-            // 1. 热力图模式
             if (isHeatMode) {
-                if (currentGeoJsonLayer && map.hasLayer(currentGeoJsonLayer)) {
-                    map.removeLayer(currentGeoJsonLayer);
-                }
+                if (currentGeoJsonLayer && map.hasLayer(currentGeoJsonLayer)) { map.removeLayer(currentGeoJsonLayer); }
+                if (polygonLayer && map.hasLayer(polygonLayer)) { map.removeLayer(polygonLayer); } // 热力图时隐藏区划
                 
-                currentMarkers.forEach(m => { 
-                    if (m instanceof L.Polyline) m.setStyle({ opacity: 0 }); 
-                });
+                currentMarkers.forEach(m => { if (m instanceof L.Polyline) m.setStyle({ opacity: 0 }); });
                 
                 if (heatLayer && map.hasLayer(heatLayer)) {
                     const currentEvents = getFilteredEvents().filter(e => e.year <= currentYear);
@@ -296,52 +305,40 @@ heatLayer = L.heatLayer(heatPoints, {
                 return;
             }
 
-            // 2. 普通点线模式
-            if (heatLayer && map.hasLayer(heatLayer)) {
-                map.removeLayer(heatLayer);
-            }
-            if (currentGeoJsonLayer && !map.hasLayer(currentGeoJsonLayer)) {
-                currentGeoJsonLayer.addTo(map);
+            if (heatLayer && map.hasLayer(heatLayer)) { map.removeLayer(heatLayer); }
+            if (currentGeoJsonLayer && !map.hasLayer(currentGeoJsonLayer)) { currentGeoJsonLayer.addTo(map); }
+            
+            // ✨ 普通模式下恢复区划显示
+            if (polygonLayer && !map.hasLayer(polygonLayer)) { map.addLayer(polygonLayer); }
+
+            // ✨ 针对多边形的处理
+            if (polygonLayer) {
+                polygonLayer.eachLayer(function(layer) {
+                    if (layer.myYear) {
+                        const isVisible = layer.myYear <= currentYear;
+                        if (isVisible) {
+                            layer.setStyle({ opacity: 0.6, fillOpacity: 0.1 }); // 显示
+                        } else {
+                            layer.setStyle({ opacity: 0, fillOpacity: 0 });    // 隐藏
+                        }
+                    }
+                });
             }
 
             currentMarkers.forEach(layer => {
                 if (layer && layer.myYear) {
                     const isVisible = layer.myYear <= currentYear;
-                    
                     if (layer.setStyle) {
-                        if (layer instanceof L.Polyline) {
-                            layer.setStyle({ opacity: isVisible ? 1 : 0 });
-                        } else {
-                            layer.setStyle({ opacity: isVisible ? 1 : 0, fillOpacity: isVisible ? 1 : 0 });
-                        }
+                        if (layer instanceof L.Polyline) { layer.setStyle({ opacity: isVisible ? 1 : 0 }); } 
+                        else { layer.setStyle({ opacity: isVisible ? 1 : 0, fillOpacity: isVisible ? 1 : 0 }); }
                     }
-                    
                     if (typeof layer.getElement === 'function') {
                         const el = layer.getElement();
-                        if (el) {
-                            el.style.pointerEvents = isVisible ? 'auto' : 'none';
-                        }
+                        if (el) { el.style.pointerEvents = isVisible ? 'auto' : 'none'; }
                     }
                 }
             });
         }
-
-            // 2. 普通点线模式
-            if (heatLayer && map.hasLayer(heatLayer)) map.removeLayer(heatLayer);
-            if (currentGeoJsonLayer && !map.hasLayer(currentGeoJsonLayer)) currentGeoJsonLayer.addTo(map);
-
-            currentMarkers.forEach(layer => {
-                if (layer.myYear) {
-                    if (layer.myYear <= currentYear) {
-                        if (layer instanceof L.Polyline) { layer.setStyle({ opacity: 1 }); } 
-                        else { layer.setStyle({ opacity: 1, fillOpacity: 1 }); if (layer.getElement()) layer.getElement().style.pointerEvents = 'auto'; }
-                    } else {
-                        if (layer instanceof L.Polyline) { layer.setStyle({ opacity: 0 }); } 
-                        else { layer.setStyle({ opacity: 0, fillOpacity: 0 }); if (layer.getElement()) layer.getElement().style.pointerEvents = 'none'; }
-                    }
-                }
-            });
-        
 
         function getFilteredEvents() {
             const keyword = document.getElementById('search-input').value.trim();
@@ -368,12 +365,58 @@ heatLayer = L.heatLayer(heatPoints, {
             }
         });
 
-        // 监听热力图开关
         document.getElementById('heat-mode-toggle').addEventListener('change', function(e) {
             isHeatMode = e.target.checked;
             filterMarkersByTime();
         });
+        // ==========================================
+        // ✨ 加载西安市各区县边界 (面数据)
+        // ==========================================
+        fetch('xian_county_fixed.geojson') // 换成刚才修复好的文件
+            .then(res => res.json())
+            .then(data => {
+                polygonLayer = L.geoJSON(data, {
+                    style: function(feature) {
+                        const name = feature.properties.name;
+                        let style = {
+                            color: '#3388ff', weight: 2, opacity: 0.4,
+                            fillColor: '#3388ff', fillOpacity: 0.05, dashArray: '4, 4'
+                        };
+                        
+                        // 给特定区县设定特定年份和颜色（模拟撤县设区）
+                        let myYear = 1900; // 默认很早
+                        if (name === '高陵区') { myYear = 2014; style.color = '#fd7e14'; style.fillColor = '#fd7e14'; }
+                        if (name === '鄠邑区') { myYear = 2016; style.color = '#fd7e14'; style.fillColor = '#fd7e14'; }
+                        if (name === '西咸新区') { myYear = 2014; style.color = '#fd7e14'; style.fillColor = '#fd7e14'; }
+                        
+                        feature.properties.myYear = myYear; // 绑定时间
+                        return style;
+                    },
+                    onEachFeature: function(feature, layer) {
+                        layer.myYear = feature.properties.myYear;
+                        
+                        if (feature.properties && feature.properties.name) {
+                            layer.bindTooltip(feature.properties.name, { sticky: true });
+                        }
+                        
+                        layer.on('mouseover', function(e) {
+                            const l = e.target;
+                            if (l.myYear <= new Date(map.timeDimension.getCurrentTime()).getFullYear()) {
+                                l.setStyle({ fillOpacity: 0.3, weight: 3 });
+                            }
+                        });
+                        layer.on('mouseout', function(e) {
+                            const l = e.target;
+                            l.setStyle({ fillOpacity: 0.05, weight: 2 });
+                        });
+                    }
+                }).addTo(map);
 
+                // ✨ 让区划图层也跟着时间轴隐藏/显示
+                currentMarkers.push(polygonLayer); 
+                filterMarkersByTime(); // 触发一次过滤
+            })
+            .catch(err => console.log("区划边界加载失败", err));
         fetch('events.json')
             .then(response => response.json())
             .then(events => {
