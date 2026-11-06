@@ -6,7 +6,7 @@ const map = L.map('map', {
     timeDimension: true, timeDimensionControl: true,
     timeDimensionControlOptions: {
         position: 'bottomleft', autoPlay: false, minSpeed: 1, maxSpeed: 10,
-        timeSliderDragUpdate: true, loop: false
+        timeSliderDragUpdate: true, loop: true
     }
 });
 
@@ -326,7 +326,35 @@ fetch('events.json')
             setTimeout(() => { map.timeDimension.setCurrentTime(new Date('2024-12-31T23:59:59Z').getTime()); }, 200);
         }, 500);
 
-        map.timeDimension.on('timeload', function(e) { debouncedUpdateChart(); });
+        // 增加一个防抖变量，防止手动拖动时间轴时镜头乱飞导致眩晕
+        let flyTimeout = null;
+
+        map.timeDimension.on('timeload', function(e) { 
+            debouncedUpdateChart(); 
+
+            // ✨ 电影级运镜逻辑
+            const currentDate = new Date(map.timeDimension.getCurrentTime());
+            const currentYear = currentDate.getFullYear();
+
+            // 当时间轴停下（或自动播放跳转）500毫秒后，镜头开始飞行
+            clearTimeout(flyTimeout);
+            flyTimeout = setTimeout(() => {
+                // 找出当前年份匹配的所有事件
+                const eventsThisYear = allEvents.filter(ev => ev.year === currentYear && ev.lat && ev.lng);
+                
+                if (eventsThisYear.length > 0) {
+                    // 选取当前年份的第一个事件作为飞行目标
+                    const target = eventsThisYear[0];
+                    
+                    // map.flyTo(坐标, 缩放级别, 动画配置)
+                    // 缩放级别 12 大概是能看到一个行政区划的视野
+                    map.flyTo([target.lat, target.lng], 12, {
+                        animate: true,
+                        duration: 2.0 // 飞行时间 2 秒
+                    });
+                }
+            }, 500); // 500毫秒防抖延迟
+        });
         
         document.getElementById('search-input').addEventListener('input', applyFilters);
         document.querySelectorAll('.cat-filter').forEach(cb => cb.addEventListener('change', applyFilters));
@@ -347,65 +375,65 @@ fetch('events.json')
 window.addEventListener('resize', function() { barChart.resize(); pieChart.resize(); });
 // ==========================================
 // ==========================================
-// 11 & 12. 确保 DOM 加载完毕后绑定新 UI 事件
 // ==========================================
-document.addEventListener('DOMContentLoaded', () => {
-    // --- 大屏模式 ---
-    const fullscreenBtn = document.getElementById('fullscreen-btn');
-    const exitDashboardBtn = document.getElementById('exit-dashboard-btn');
+// 11. 大屏纯净看板模式
+// ==========================================
+const fullscreenBtn = document.getElementById('fullscreen-btn');
+const exitDashboardBtn = document.getElementById('exit-dashboard-btn');
 
-    if (fullscreenBtn && exitDashboardBtn) {
-        fullscreenBtn.addEventListener('click', () => {
-            document.body.classList.add('dashboard-mode');
-            setTimeout(() => { map.invalidateSize(); }, 300);
-        });
-        
-        exitDashboardBtn.addEventListener('click', () => {
+if (fullscreenBtn && exitDashboardBtn) {
+    fullscreenBtn.addEventListener('click', () => {
+        document.body.classList.add('dashboard-mode');
+        // 地图全屏后必须刷新尺寸，否则会出现灰边
+        setTimeout(() => { map.invalidateSize(); }, 300);
+    });
+    
+    exitDashboardBtn.addEventListener('click', () => {
+        document.body.classList.remove('dashboard-mode');
+        setTimeout(() => { 
+            map.invalidateSize(); 
+            barChart.resize(); 
+            pieChart.resize();
+        }, 300);
+    });
+    
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && document.body.classList.contains('dashboard-mode')) {
             document.body.classList.remove('dashboard-mode');
-            setTimeout(() => { 
-                map.invalidateSize(); 
-                barChart.resize(); 
-                pieChart.resize();
-            }, 300);
-        });
-        
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && document.body.classList.contains('dashboard-mode')) {
-                document.body.classList.remove('dashboard-mode');
-                setTimeout(() => { map.invalidateSize(); barChart.resize(); pieChart.resize(); }, 300);
-            }
-        });
-    } else {
-        console.warn("找不到大屏模式按钮，请检查 index.html 是否有 id='fullscreen-btn'");
-    }
+            setTimeout(() => { map.invalidateSize(); barChart.resize(); pieChart.resize(); }, 300);
+        }
+    });
+} else {
+    console.warn("找不到大屏模式按钮，请检查 index.html。");
+}
 
-    // --- 政策库模态框 ---
-    const policyBtn = document.getElementById('policy-btn');
-    const policyModal = document.getElementById('policy-modal');
-    const closePolicyBtn = document.getElementById('close-policy');
-    const policyListContainer = document.getElementById('policy-list-container');
+// ==========================================
+// 12. 政策库模态框
+// ==========================================
+const policyBtn = document.getElementById('policy-btn');
+const policyModal = document.getElementById('policy-modal');
+const closePolicyBtn = document.getElementById('close-policy');
+const policyListContainer = document.getElementById('policy-list-container');
 
-    if (policyBtn && policyModal && closePolicyBtn && policyListContainer) {
-        policyBtn.addEventListener('click', () => {
-            renderPolicyList();
-            policyModal.classList.add('active');
-        });
-        
-        closePolicyBtn.addEventListener('click', () => {
-            policyModal.classList.remove('active');
-        });
-        
-        policyModal.addEventListener('click', (e) => {
-            if (e.target === policyModal) policyModal.classList.remove('active');
-        });
-    } else {
-        console.warn("找不到政策库相关元素，请检查 index.html 是否有对应的 id。");
-    }
-});
+if (policyBtn && policyModal && closePolicyBtn && policyListContainer) {
+    policyBtn.addEventListener('click', () => {
+        renderPolicyList();
+        policyModal.classList.add('active');
+    });
+    
+    closePolicyBtn.addEventListener('click', () => {
+        policyModal.classList.remove('active');
+    });
+    
+    policyModal.addEventListener('click', (e) => {
+        if (e.target === policyModal) policyModal.classList.remove('active');
+    });
+} else {
+    console.warn("找不到政策库相关元素，请检查 index.html。");
+}
 
 // --- 渲染政策列表函数 ---
 function renderPolicyList() {
-    const policyListContainer = document.getElementById('policy-list-container');
     if (!policyListContainer) return;
     
     policyListContainer.innerHTML = ''; 
@@ -427,15 +455,16 @@ function renderPolicyList() {
         `;
         
         div.addEventListener('click', () => {
-            document.getElementById('policy-modal').classList.remove('active'); 
+            policyModal.classList.remove('active'); 
             
-            // 时间轴跳转
+            // 1. 时间轴跳转
             const targetDate = new Date(`${p.year}-06-01T00:00:00`);
             map.timeDimension.setCurrentTime(targetDate.getTime());
-            // 地图飞向点位
+            
+            // 2. 地图飞向点位
             map.flyTo([p.lat, p.lng], 14, { duration: 1.5 });
             
-            // 打开侧边栏展示详情
+            // 3. 打开侧边栏展示详情
             const panel = document.getElementById('side-panel');
             document.getElementById('panel-title').textContent = `${p.year} · ${p.title}`;
             document.getElementById('panel-desc').textContent = p.desc;
@@ -451,10 +480,8 @@ function renderPolicyList() {
             
             panel.classList.add('active');
             
-            // 触发区划高亮
-            if (typeof highlightArea === 'function') {
-                highlightArea(p.title + p.desc);
-            }
+            // 4. 触发区划高亮
+            highlightArea(p.title + p.desc);
         });
         
         policyListContainer.appendChild(div);

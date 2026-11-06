@@ -100,7 +100,7 @@ body.dashboard-mode #map {
     position: fixed;
     top: 20px;
     right: 20px;
-    z-index: 3000;
+    z-index: 9999;
     display: none;
     padding: 10px 20px;
     background: rgba(0, 0, 0, 0.7);
