@@ -190,14 +190,23 @@ function updateChartData(eventsArray) {
 function eventsToGeoJSON(events) {
     return {
         type: 'FeatureCollection',
-        features: events.map(e => ({
-            type: 'Feature',
-            geometry: { type: 'Point', coordinates: [e.lng, e.lat] },
-            properties: { 
-                time: `${e.year}-01-01`, title: e.title, year: e.year, category: e.category, 
-                desc: e.desc, source: e.source, image: e.image, link: e.link 
-            }
-        }))
+        features: events.map(e => {
+            // 兜底处理：如果没有写月和日，默认1月1日
+            const m = e.month ? String(e.month).padStart(2, '0') : '01';
+            const d = e.day ? String(e.day).padStart(2, '0') : '01';
+            const fullDate = `${e.year}-${m}-${d}`;
+
+            return {
+                type: 'Feature',
+                geometry: { type: 'Point', coordinates: [e.lng, e.lat] },
+                properties: { 
+                    time: fullDate, // 精确到日
+                    title: e.title, year: e.year, category: e.category, 
+                    desc: e.desc, source: e.source, image: e.image, link: e.link,
+                    region: e.region
+                }
+            };
+        })
     };
 }
 
@@ -213,7 +222,9 @@ function renderData(eventsArray) {
                 "color": getColor(e.category), "weight": 4, "opacity": 1, "delay": 800,
                 "dashArray": [10, 20], "pulseColor": "#FFFFFF", "paused": false
             });
-            antLine.myYear = e.year; 
+    const mLine = e.month ? String(e.month).padStart(2, '0') : '01';
+    const dLine = e.day ? String(e.day).padStart(2, '0') : '01';
+    antLine.myDate = `${e.year}-${mLine}-${dLine}`;
             currentMarkers.push(antLine);
             antLine.addTo(map);
         }
@@ -226,7 +237,7 @@ function renderData(eventsArray) {
             return L.circleMarker(latlng, { radius: 7, fillColor: getColor(feature.properties.category), color: '#fff', weight: 2, opacity: 1, fillOpacity: 1 });
         },
         onEachFeature: function (feature, layer) {
-            layer.myYear = feature.properties.year; 
+    layer.myDate = feature.properties.time;
             currentMarkers.push(layer);
             const p = feature.properties;
             layer.bindTooltip(`${p.year} · ${p.title}`, { direction: 'top', offset: [0, -10] });
@@ -282,14 +293,25 @@ sourceEl.innerHTML = `<span style="background:#e8f5e9; color:#2e7d32; padding:2p
 // ==========================================
 function filterMarkersByTime() {
     if (!map || !map.timeDimension) return;
-    const currentYear = new Date(map.timeDimension.getCurrentTime()).getFullYear();
+    
+    // 获取当前时间轴的具体日期（YYYY-MM-DD格式）
+    const currentTimeDate = new Date(map.timeDimension.getCurrentTime());
+    const currentYear = currentTimeDate.getFullYear();
+    const currentMonth = String(currentTimeDate.getMonth() + 1).padStart(2, '0');
+    const currentDay = String(currentTimeDate.getDate()).padStart(2, '0');
+    const currentDateStr = `${currentYear}-${currentMonth}-${currentDay}`;
     
     if (isHeatMode) {
         if (currentGeoJsonLayer && map.hasLayer(currentGeoJsonLayer)) map.removeLayer(currentGeoJsonLayer);
         currentMarkers.forEach(m => { if (m instanceof L.Polyline) m.setStyle({ opacity: 0 }); });
         
         if (heatLayer && map.hasLayer(heatLayer)) {
-            const currentEvents = getFilteredEvents().filter(e => e.year <= currentYear);
+            // 热力图也同步按精确时间过滤
+            const currentEvents = getFilteredEvents().filter(e => {
+                const m = e.month ? String(e.month).padStart(2, '0') : '01';
+                const d = e.day ? String(e.day).padStart(2, '0') : '01';
+                return `${e.year}-${m}-${d}` <= currentDateStr;
+            });
             heatLayer.setLatLngs(currentEvents.map(e => [e.lat, e.lng, 1]));
         } else if (heatLayer && !map.hasLayer(heatLayer)) {
             heatLayer.addTo(map);
@@ -301,8 +323,9 @@ function filterMarkersByTime() {
     if (currentGeoJsonLayer && !map.hasLayer(currentGeoJsonLayer)) currentGeoJsonLayer.addTo(map);
 
     currentMarkers.forEach(layer => {
-        if (layer && layer.myYear) {
-            const isVisible = layer.myYear <= currentYear;
+        // 改用字符串比对，字典序即时间序
+        if (layer && layer.myDate) {
+            const isVisible = layer.myDate <= currentDateStr;
             if (layer.setStyle) {
                 if (layer instanceof L.Polyline) layer.setStyle({ opacity: isVisible ? 1 : 0 });
                 else layer.setStyle({ opacity: isVisible ? 1 : 0, fillOpacity: isVisible ? 1 : 0 });
@@ -351,49 +374,76 @@ document.getElementById('heat-mode-toggle').addEventListener('change', function(
     filterMarkersByTime();
 });
 
-fetch('events.json')
-    .then(response => response.json())
         fetch('events.json')
             .then(response => response.json())
             .then(events => {
-                // ✨ 核心：智能坐标吸附与数据清洗
+                // 先做智能坐标吸附
                 allEvents = events.map(ev => {
                     let finalLat = ev.lat;
                     let finalLng = ev.lng;
                     let matchedRegion = "";
-
-                    // 检查标题和描述中是否包含区县关键词
                     const contentToCheck = (ev.title || "") + (ev.desc || "");
                     for (let key in regionCenters) {
                         if (contentToCheck.includes(key)) {
-                            // 如果匹配到，就吸取该区中心点坐标
                             finalLat = regionCenters[key][0];
                             finalLng = regionCenters[key][1];
                             matchedRegion = key;
-                            break; // 找到第一个匹配的就跳出
+                            break;
                         }
                     }
-
-                    // 对于本来就写死坐标的交通/大型项目，如果不包含区县词，就保留原坐标
-                    return {
-                        ...ev,
-                        lat: finalLat,
-                        lng: finalLng,
-                        region: matchedRegion // 把匹配到的区存下来，方便后面高亮
-                    };
+                    return { ...ev, lat: finalLat, lng: finalLng, region: matchedRegion };
                 });
 
-                const allTimes = [...new Set(allEvents.map(e => `${e.year}-01-01T00:00:00Z`))].sort();
-                map.timeDimension.setAvailableTimes(allTimes, true);
+                // ✨ 时间轴范围从精确到日
+                const allTimes = allEvents.map(e => {
+                    const m = e.month ? String(e.month).padStart(2, '0') : '01';
+                    const d = e.day ? String(e.day).padStart(2, '0') : '01';
+                    return `${e.year}-${m}-${d}T00:00:00Z`;
+                }).sort();
+                
+                // 去重并设置给时间轴
+                map.timeDimension.setAvailableTimes([...new Set(allTimes)], true);
                 applyFilters();
 
-                // 加载动画与初始时间设置
                 setTimeout(() => {
                     document.getElementById('loading-overlay').classList.add('hidden');
-                    setTimeout(() => { map.timeDimension.setCurrentTime(new Date('2024-12-31T23:59:59Z').getTime()); }, 200);
+                    // 默认跳到最新的时间
+                    const latestTime = new Date(allTimes[allTimes.length - 1]).getTime();
+                    setTimeout(() => { map.timeDimension.setCurrentTime(latestTime); }, 200);
                 }, 500);
+
+                map.timeDimension.on('timeload', function(e) { 
+                    debouncedUpdateChart(); 
+
+                    const currentDate = new Date(map.timeDimension.getCurrentTime());
+                    const currY = currentDate.getFullYear();
+                    const currM = String(currentDate.getMonth() + 1).padStart(2, '0');
+                    const currD = String(currentDate.getDate()).padStart(2, '0');
+                    const currentDateStr = `${currY}-${currM}-${currD}`;
+
+                    clearTimeout(flyTimeout);
+                    flyTimeout = setTimeout(() => {
+                        // ✨ 运镜匹配也精确到日
+                        const eventsThisDay = allEvents.filter(ev => {
+                            const m = ev.month ? String(ev.month).padStart(2, '0') : '01';
+                            const d = ev.day ? String(ev.day).padStart(2, '0') : '01';
+                            return `${ev.year}-${m}-${d}` === currentDateStr;
+                        });
+                        
+                        // 如果当天没事件，退回到“当年”找
+                        let target = eventsThisDay.length > 0 ? eventsThisDay[0] : null;
+                        if (!target) {
+                            const eventsThisYear = allEvents.filter(ev => ev.year === currY);
+                            if (eventsThisYear.length > 0) target = eventsThisYear[0];
+                        }
+                        
+                        if (target) {
+                            map.flyTo([target.lat, target.lng], 12, { animate: true, duration: 2.0 });
+                        }
+                    }, 600); // 稍微拉长一点点延迟，给时间轴停留的时间
+                });
                 
-                // ... 下面的时间轴联动和按钮监听保持你原来的不变 ...
+                // ... 后面的搜索框、图表点击等监听保持不变
 
         // 增加一个防抖变量，防止手动拖动时间轴时镜头乱飞导致眩晕
         let flyTimeout = null;
@@ -429,7 +479,7 @@ fetch('events.json')
         document.querySelectorAll('.cat-filter').forEach(cb => cb.addEventListener('change', applyFilters));
 
         barChart.on('click', function (params) {
-            map.timeDimension.setCurrentTime(new Date(`${parseInt(params.name)}-01-01T00:00:00`).getTime());
+            map.timeDimension.setCurrentTime(new Date(`${parseInt(params.name)}-06-01T00:00:00`).getTime());
         });
         pieChart.on('click', function (params) {
             document.querySelectorAll('.cat-filter').forEach(cb => { cb.checked = (cb.value === params.name); });
