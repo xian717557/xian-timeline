@@ -1,6 +1,28 @@
 // ==========================================
 // 1. 初始化地图与图层控制
 // ==========================================
+// ✨ 核心：西安各区县/开发区中心点坐标库（用于智能吸附）
+const regionCenters = {
+    "高新": [34.2060, 108.8560],
+    "雁塔": [34.2130, 108.9480],
+    "碑林": [34.2300, 108.9340],
+    "新城": [34.2660, 108.9600],
+    "莲湖": [34.2660, 108.9330],
+    "未央": [34.2920, 108.9460],
+    "灞桥": [34.2730, 109.0640],
+    "长安": [34.1500, 108.9400],
+    "高陵": [34.5340, 109.0890],
+    "鄠邑": [34.1000, 108.6000],
+    "临潼": [34.3600, 109.2100],
+    "阎良": [34.6620, 109.2260],
+    "蓝田": [34.1500, 109.3200],
+    "周至": [34.1600, 108.2200],
+    "西咸": [34.3270, 108.7320],
+    "浐灞": [34.3870, 109.0430],
+    "经开": [34.3500, 108.9000],
+    "曲江": [34.2180, 108.9600],
+    "秦岭": [34.0500, 108.8500]
+};
 const map = L.map('map', {
     center: [34.3416, 108.9398], zoom: 11,
     timeDimension: true, timeDimensionControl: true,
@@ -9,7 +31,9 @@ const map = L.map('map', {
         timeSliderDragUpdate: true, loop: true
     }
 });
-
+// 创建专属的区划面图层容器，层级设为 350（低于默认的点图层 400）
+map.createPane('areasPane');
+map.getPane('areasPane').style.zIndex = 350;
 // 创建底图图层
 const vecLayer = L.tileLayer('https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', { maxZoom: 19 }).addTo(map);
 const satLayer = L.tileLayer('https://webst01.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}', { maxZoom: 19 });
@@ -44,6 +68,7 @@ fetch('xian_county.geojson') // ⚠️ 确保你的文件名叫这个，且里�
     .then(res => res.json())
     .then(data => {
         L.geoJSON(data, {
+            pane: 'areasPane', // ✨ 新增：让面永远在点的下面
             style: function() {
                 return { 
                     color: '#3388ff', weight: 1.5, opacity: 0.6, 
@@ -91,13 +116,15 @@ function getColor(category) {
 }
 
 // ==========================================
-// 5. ✨ 新增：区划面高亮动画函数
+// 5. ✨ 新增：区划面高亮动画函数 (精准版)
 // ==========================================
-function highlightArea(text, duration = 3000) {
-    // 遍历所有区，看看事件标题里有没有包含这个区的名字
+function highlightArea(regionName, duration = 3000) {
+    if (!regionName) return;
+
+    // 遍历我们存好的区划图层字典
     for (let areaName in areaLayers) {
-        // 比如标题是"高陵撤县设区"，包含"高陵区"
-        if (text.includes(areaName) || areaName.includes(text)) {
+        // 如果传入的区名和图层名称互相包含（比如"高新"和"高新区"）
+        if (areaName.includes(regionName) || regionName.includes(areaName)) {
             const targetLayer = areaLayers[areaName];
             
             // 1. 变红变亮
@@ -208,7 +235,19 @@ function renderData(eventsArray) {
                 // 弹窗逻辑
                 const panel = document.getElementById('side-panel');
                 document.getElementById('panel-title').textContent = `${p.year} · ${p.title}`;
-                document.getElementById('panel-desc').textContent = p.desc;
+// 替换原本的 textContent 设置
+const descEl = document.getElementById('panel-desc');
+// 将描述中的“地铁”、“规划”、“生态”等关键词加粗变色
+let formattedDesc = p.desc;
+if (p.desc) {
+    formattedDesc = formattedDesc.replace(/(地铁|规划|生态|高新区|西咸新区|全运会|一带一路)/g, '<span style="color: #007bff; font-weight: bold;">$1</span>');
+}
+// 如果有关联的年份或项目名称，也可以加粗
+descEl.innerHTML = formattedDesc;
+
+// 来源标签美化
+const sourceEl = document.getElementById('panel-source');
+sourceEl.innerHTML = `<span style="background:#e8f5e9; color:#2e7d32; padding:2px 6px; border-radius:4px; font-size:12px;">官方认证：${p.source}</span>`;
                 document.getElementById('panel-year').textContent = p.year + '年';
                 document.getElementById('panel-category').textContent = p.category;
                 document.getElementById('panel-source').textContent = p.source;
@@ -222,7 +261,7 @@ function renderData(eventsArray) {
                 panel.classList.add('active');
 
                 // ✨ 核心触发：联动高亮
-                highlightArea(p.title + p.desc); 
+                highlightArea(p.region || p.title); 
             });
         }
     });
@@ -314,17 +353,47 @@ document.getElementById('heat-mode-toggle').addEventListener('change', function(
 
 fetch('events.json')
     .then(response => response.json())
-    .then(events => {
-        allEvents = events;
-        const allTimes = [...new Set(allEvents.map(e => `${e.year}-01-01T00:00:00Z`))].sort();
-        map.timeDimension.setAvailableTimes(allTimes, true);
-        applyFilters();
+        fetch('events.json')
+            .then(response => response.json())
+            .then(events => {
+                // ✨ 核心：智能坐标吸附与数据清洗
+                allEvents = events.map(ev => {
+                    let finalLat = ev.lat;
+                    let finalLng = ev.lng;
+                    let matchedRegion = "";
 
-        // 加载动画与初始时间设置
-        setTimeout(() => {
-            document.getElementById('loading-overlay').classList.add('hidden');
-            setTimeout(() => { map.timeDimension.setCurrentTime(new Date('2024-12-31T23:59:59Z').getTime()); }, 200);
-        }, 500);
+                    // 检查标题和描述中是否包含区县关键词
+                    const contentToCheck = (ev.title || "") + (ev.desc || "");
+                    for (let key in regionCenters) {
+                        if (contentToCheck.includes(key)) {
+                            // 如果匹配到，就吸取该区中心点坐标
+                            finalLat = regionCenters[key][0];
+                            finalLng = regionCenters[key][1];
+                            matchedRegion = key;
+                            break; // 找到第一个匹配的就跳出
+                        }
+                    }
+
+                    // 对于本来就写死坐标的交通/大型项目，如果不包含区县词，就保留原坐标
+                    return {
+                        ...ev,
+                        lat: finalLat,
+                        lng: finalLng,
+                        region: matchedRegion // 把匹配到的区存下来，方便后面高亮
+                    };
+                });
+
+                const allTimes = [...new Set(allEvents.map(e => `${e.year}-01-01T00:00:00Z`))].sort();
+                map.timeDimension.setAvailableTimes(allTimes, true);
+                applyFilters();
+
+                // 加载动画与初始时间设置
+                setTimeout(() => {
+                    document.getElementById('loading-overlay').classList.add('hidden');
+                    setTimeout(() => { map.timeDimension.setCurrentTime(new Date('2024-12-31T23:59:59Z').getTime()); }, 200);
+                }, 500);
+                
+                // ... 下面的时间轴联动和按钮监听保持你原来的不变 ...
 
         // 增加一个防抖变量，防止手动拖动时间轴时镜头乱飞导致眩晕
         let flyTimeout = null;
@@ -481,7 +550,7 @@ function renderPolicyList() {
             panel.classList.add('active');
             
             // 4. 触发区划高亮
-            highlightArea(p.title + p.desc);
+            highlightArea(p.region || p.title);
         });
         
         policyListContainer.appendChild(div);
