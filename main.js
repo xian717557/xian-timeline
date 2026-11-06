@@ -345,3 +345,118 @@ fetch('events.json')
     });
 
 window.addEventListener('resize', function() { barChart.resize(); pieChart.resize(); });
+// ==========================================
+// ==========================================
+// 11 & 12. 确保 DOM 加载完毕后绑定新 UI 事件
+// ==========================================
+document.addEventListener('DOMContentLoaded', () => {
+    // --- 大屏模式 ---
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
+    const exitDashboardBtn = document.getElementById('exit-dashboard-btn');
+
+    if (fullscreenBtn && exitDashboardBtn) {
+        fullscreenBtn.addEventListener('click', () => {
+            document.body.classList.add('dashboard-mode');
+            setTimeout(() => { map.invalidateSize(); }, 300);
+        });
+        
+        exitDashboardBtn.addEventListener('click', () => {
+            document.body.classList.remove('dashboard-mode');
+            setTimeout(() => { 
+                map.invalidateSize(); 
+                barChart.resize(); 
+                pieChart.resize();
+            }, 300);
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && document.body.classList.contains('dashboard-mode')) {
+                document.body.classList.remove('dashboard-mode');
+                setTimeout(() => { map.invalidateSize(); barChart.resize(); pieChart.resize(); }, 300);
+            }
+        });
+    } else {
+        console.warn("找不到大屏模式按钮，请检查 index.html 是否有 id='fullscreen-btn'");
+    }
+
+    // --- 政策库模态框 ---
+    const policyBtn = document.getElementById('policy-btn');
+    const policyModal = document.getElementById('policy-modal');
+    const closePolicyBtn = document.getElementById('close-policy');
+    const policyListContainer = document.getElementById('policy-list-container');
+
+    if (policyBtn && policyModal && closePolicyBtn && policyListContainer) {
+        policyBtn.addEventListener('click', () => {
+            renderPolicyList();
+            policyModal.classList.add('active');
+        });
+        
+        closePolicyBtn.addEventListener('click', () => {
+            policyModal.classList.remove('active');
+        });
+        
+        policyModal.addEventListener('click', (e) => {
+            if (e.target === policyModal) policyModal.classList.remove('active');
+        });
+    } else {
+        console.warn("找不到政策库相关元素，请检查 index.html 是否有对应的 id。");
+    }
+});
+
+// --- 渲染政策列表函数 ---
+function renderPolicyList() {
+    const policyListContainer = document.getElementById('policy-list-container');
+    if (!policyListContainer) return;
+    
+    policyListContainer.innerHTML = ''; 
+    const policies = allEvents.filter(e => e.category === '政策').sort((a, b) => b.year - a.year);
+
+    if (policies.length === 0) {
+        policyListContainer.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">暂无政策数据，请运行 Python 爬虫抓取并合并到 events.json。</div>';
+        return;
+    }
+
+    policies.forEach((p) => {
+        const div = document.createElement('div');
+        div.className = 'policy-item';
+        div.innerHTML = `
+            <div class="policy-item-title">${p.title}</div>
+            <div class="policy-item-meta">
+                📅 ${p.year}年 | 🏷️ ${p.category} | 来源：${p.source}
+            </div>
+        `;
+        
+        div.addEventListener('click', () => {
+            document.getElementById('policy-modal').classList.remove('active'); 
+            
+            // 时间轴跳转
+            const targetDate = new Date(`${p.year}-06-01T00:00:00`);
+            map.timeDimension.setCurrentTime(targetDate.getTime());
+            // 地图飞向点位
+            map.flyTo([p.lat, p.lng], 14, { duration: 1.5 });
+            
+            // 打开侧边栏展示详情
+            const panel = document.getElementById('side-panel');
+            document.getElementById('panel-title').textContent = `${p.year} · ${p.title}`;
+            document.getElementById('panel-desc').textContent = p.desc;
+            document.getElementById('panel-year').textContent = p.year + '年';
+            document.getElementById('panel-category').textContent = p.category;
+            document.getElementById('panel-source').textContent = p.source;
+            
+            const imgEl = document.getElementById('panel-img');
+            if (p.image) { imgEl.src = p.image; imgEl.style.display = 'block'; } else { imgEl.style.display = 'none'; }
+            
+            const linkEl = document.getElementById('panel-link');
+            if (p.link) { linkEl.href = p.link; linkEl.style.display = 'block'; } else { linkEl.style.display = 'none'; }
+            
+            panel.classList.add('active');
+            
+            // 触发区划高亮
+            if (typeof highlightArea === 'function') {
+                highlightArea(p.title + p.desc);
+            }
+        });
+        
+        policyListContainer.appendChild(div);
+    });
+}
