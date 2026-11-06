@@ -5,73 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>西安城市发展时间线</title>
     
+    <!-- 外部样式库 -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-timedimension@1.1.1/dist/leaflet.timedimension.control.min.css" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet-ant-path@1.3.0/dist/leaflet-ant-path.css" />
     
-    <style>
-        body { margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        
-        #loading-overlay {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: #111; z-index: 9999; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; color: #fff; transition: opacity 0.5s;
-        }
-        .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.3); border-top-color: #007bff; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 15px; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        #loading-overlay.hidden { opacity: 0; pointer-events: none; }
-
-        #top-bar {
-            min-height: 60px; background-color: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            display: flex; align-items: center; justify-content: space-between; padding: 0 20px; z-index: 1000;
-            flex-wrap: wrap;
-        }
-        #top-bar h1 { font-size: 18px; margin: 0; color: #333; white-space: nowrap; }
-        .controls { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; padding: 10px 0; }
-        #search-input { width: 180px; padding: 6px 12px; border: 1px solid #ddd; border-radius: 20px; outline: none; }
-        .category-filters { display: flex; flex-wrap: wrap; gap: 5px; }
-        .category-filters label { cursor: pointer; font-size: 13px; color: #555; display: inline-flex; align-items: center; }
-        
-        .heat-toggle { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: bold; color: #d9534f; cursor: pointer; background: #ffebe8; padding: 4px 10px; border-radius: 15px; }
-        .heat-toggle input { cursor: pointer; }
-
-        #stats-text { font-size: 14px; color: #666; font-weight: bold; }
-        #map { flex: 1; width: 100%; background: #000; }
-
-        #bottom-panel { height: 32vh; display: flex; background: #fff; border-top: 1px solid #eee; }
-        #bar-chart { width: 65%; height: 100%; }
-        #pie-chart { width: 35%; height: 100%; border-left: 1px solid #eee; }
-
-        #side-panel {
-            position: fixed; top: 60px; right: -420px; width: 380px; height: calc(100vh - 60px);
-            background: rgba(255, 255, 255, 0.98); box-shadow: -5px 0 20px rgba(0,0,0,0.15);
-            transition: right 0.35s cubic-bezier(0.25, 0.8, 0.25, 1); z-index: 2000;
-            padding: 25px; box-sizing: border-box; overflow-y: auto; border-left: 1px solid #eee;
-        }
-        #side-panel.active { right: 0; }
-        #close-panel { position: absolute; top: 15px; right: 20px; font-size: 28px; color: #999; cursor: pointer; }
-        #panel-img { width: 100%; height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 15px; display: none; }
-        #panel-title { font-size: 20px; color: #222; margin: 0 0 10px 0; line-height: 1.4; }
-        .panel-meta { font-size: 13px; color: #888; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-        .panel-meta span { display: inline-block; padding: 2px 8px; border-radius: 12px; background: #f0f0f0; margin-right: 10px; }
-        #panel-desc { font-size: 15px; color: #444; line-height: 1.8; margin-bottom: 20px; }
-        
-        /* 原文链接按钮样式 */
-        #panel-link { display: inline-block; margin-top: 10px; padding: 8px 15px; background: #007bff; color: #fff; text-decoration: none; border-radius: 5px; font-size: 14px; }
-
-        @media screen and (max-width: 768px) {
-            #top-bar { padding: 10px; flex-direction: column; align-items: flex-start; gap: 8px; }
-            .controls { width: 100%; justify-content: space-between; gap: 8px; }
-            #search-input { width: 100%; box-sizing: border-box; }
-            .category-filters { justify-content: space-between; width: 100%; }
-            #stats-text { align-self: flex-end; font-size: 12px; }
-            #bottom-panel { height: 25vh; }
-            #pie-chart { display: none; } 
-            #bar-chart { width: 100%; }
-            #side-panel { top: auto; bottom: -100vh; right: 0; width: 100%; height: 80vh; border-radius: 20px 20px 0 0; transition: bottom 0.3s ease; border-left: none; border-top: 1px solid #eee; padding: 20px; }
-            #side-panel.active { bottom: 0; }
-        }
-    </style>
+    <!-- 我们拆分出来的本地样式 -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="loading-overlay">
@@ -90,7 +30,6 @@
                 <label><input type="checkbox" class="cat-filter" value="经济" checked> <span style="color:#6f42c1;">经济</span></label>
                 <label><input type="checkbox" class="cat-filter" value="生态" checked> <span style="color:#17a2b8;">生态</span></label>
                 <label><input type="checkbox" class="cat-filter" value="区划" checked> <span style="color:#fd7e14;">区划</span></label>
-                <!-- ✨ 新增：政策分类 -->
                 <label><input type="checkbox" class="cat-filter" value="政策" checked> <span style="color:#e83e8c;">政策</span></label>
             </div>
             <label class="heat-toggle">
@@ -110,8 +49,7 @@
             <span>来源：<span id="panel-source"></span></span>
         </div>
         <p id="panel-desc"></p>
-        <!-- ✨ 新增：原文链接 -->
-        <a id="panel-link" href="#" target="_blank">阅读政策原文</a>
+        <a id="panel-link" href="#" target="_blank" style="display:none; margin-top:15px; padding:8px 15px; background:#007bff; color:#fff; text-decoration:none; border-radius:5px; font-size:14px; text-align:center;">阅读原文</a>
     </div>
 
     <div id="map"></div>
@@ -121,6 +59,7 @@
         <div id="pie-chart"></div>
     </div>
 
+    <!-- 外部 JS 库 -->
     <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/iso8601-js-period@0.2.1/iso8601.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet-timedimension@1.1.1/dist/leaflet.timedimension.min.js"></script>
@@ -128,323 +67,7 @@
     <script src="https://cdn.jsdelivr.net/npm/leaflet-ant-path@1.3.0/dist/leaflet-ant-path.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     
-    <script>
-        const map = L.map('map', {
-            center: [34.3416, 108.9398], zoom: 11,
-            timeDimension: true, timeDimensionControl: true,
-            timeDimensionControlOptions: {
-                position: 'bottomleft', autoPlay: false, minSpeed: 1, maxSpeed: 10,
-                timeSliderDragUpdate: true, loop: false
-            }
-        });
-
-        const vecLayer = L.tileLayer('https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', { maxZoom: 19 }).addTo(map);
-        const satLayer = L.tileLayer('https://webst01.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}', { maxZoom: 19 });
-        L.control.layers({ "现代矢量图": vecLayer, "卫星实景图": satLayer }, null, { position: 'topright' }).addTo(map);
-
-        const barChart = echarts.init(document.getElementById('bar-chart'));
-        const pieChart = echarts.init(document.getElementById('pie-chart'));
-        
-        let allEvents = [];
-        let currentGeoJsonLayer = null;
-               let heatLayer = null; 
-        let polygonLayer = null; // ✨ 新增：用来存区划面图层 
-        let currentMarkers = [];
-        let isHeatMode = false; 
-
-        let chartUpdateTimeout = null;
-        function debouncedUpdateChart() {
-            clearTimeout(chartUpdateTimeout);
-            chartUpdateTimeout = setTimeout(() => {
-                updateChartData(getFilteredEvents());
-                filterMarkersByTime();
-            }, 30); 
-        }
-
-        function getColor(category) {
-            if (category === '交通') return '#007bff';
-            if (category === '规划') return '#dc3545';
-            if (category === '文化') return '#28a745';
-            if (category === '经济') return '#6f42c1';
-            if (category === '生态') return '#17a2b8';
-            if (category === '区划') return '#fd7e14';
-            if (category === '政策') return '#e83e8c'; // ✨ 新增：政策颜色
-            return '#6c757d';
-        }
-
-        function updateChartData(eventsArray) {
-            const currentYear = new Date(map.timeDimension.getCurrentTime()).getFullYear();
-            const yearCounts = {};
-            eventsArray.forEach(e => { yearCounts[e.year] = (yearCounts[e.year] || 0) + 1; });
-            const years = Object.keys(yearCounts).sort((a, b) => a - b);
-            const counts = years.map(y => yearCounts[y]);
-
-            barChart.setOption({
-                title: { text: '事件年份分布', left: 'center', textStyle: { fontSize: 13 } },
-                tooltip: { trigger: 'axis' },
-                grid: { left: '5%', right: '5%', bottom: '10%', top: '20%', containLabel: true },
-                xAxis: { type: 'category', data: years, axisLabel: { interval: 0, fontSize: 11 } },
-                yAxis: { type: 'value', minInterval: 1 },
-                series: [{
-                    name: '事件数', type: 'bar', data: counts, barMaxWidth: 30,
-                    itemStyle: { color: function(params) { return parseInt(years[params.dataIndex]) <= currentYear ? '#5470c6' : '#e0e0e0'; } }
-                }]
-            }, true);
-
-            const catCounts = {};
-            eventsArray.forEach(e => { catCounts[e.category] = (catCounts[e.category] || 0) + 1; });
-            const pieData = Object.keys(catCounts).map(cat => ({
-                name: cat, value: catCounts[cat], itemStyle: { color: getColor(cat) }
-            }));
-
-            pieChart.setOption({
-                title: { text: '事件类型占比', left: 'center', textStyle: { fontSize: 13 } },
-                tooltip: { trigger: 'item', formatter: '{b}: {c}个 ({d}%)' },
-                series: [{
-                    type: 'pie', radius: ['35%', '65%'], center: ['50%', '55%'],
-                    data: pieData, label: { show: true, fontSize: 11 }
-                }]
-            }, true);
-        }
-
-        function eventsToGeoJSON(events) {
-            return {
-                type: 'FeatureCollection',
-                features: events.map(e => ({
-                    type: 'Feature',
-                    geometry: { type: 'Point', coordinates: [e.lng, e.lat] },
-                    // ✨ 新增：将 link 也传给前端
-                    properties: { time: `${e.year}-01-01`, title: e.title, year: e.year, category: e.category, desc: e.desc, source: e.source, image: e.image, link: e.link }
-                }))
-            };
-        }
-
-        function renderData(eventsArray) {
-            if (currentGeoJsonLayer) { map.removeLayer(currentGeoJsonLayer); }
-            if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
-            currentMarkers = [];
-
-            eventsArray.forEach(e => {
-                if (e.path && e.path.length > 0) {
-                    const antLine = L.polyline.antPath(e.path, {
-                        "color": getColor(e.category), "weight": 4, "opacity": 1, "delay": 800,
-                        "dashArray": [10, 20], "pulseColor": "#FFFFFF", "paused": false
-                    });
-                    antLine.myYear = e.year; 
-                    currentMarkers.push(antLine);
-                    antLine.addTo(map);
-                }
-            });
-
-            const geojsonData = eventsToGeoJSON(eventsArray);
-            currentGeoJsonLayer = L.geoJSON(geojsonData, {
-                pointToLayer: function (feature, latlng) {
-                    return L.circleMarker(latlng, { radius: 7, fillColor: getColor(feature.properties.category), color: '#fff', weight: 2, opacity: 1, fillOpacity: 1 });
-                },
-                onEachFeature: function (feature, layer) {
-                    layer.myYear = feature.properties.year; 
-                    currentMarkers.push(layer);
-                    const p = feature.properties;
-                    layer.bindTooltip(`${p.year} · ${p.title}`, { direction: 'top', offset: [0, -10] });
-                    
-                    layer.on('click', function() {
-                        const panel = document.getElementById('side-panel');
-                        document.getElementById('panel-title').textContent = `${p.year} · ${p.title}`;
-                        document.getElementById('panel-desc').textContent = p.desc;
-                        document.getElementById('panel-year').textContent = p.year + '年';
-                        document.getElementById('panel-category').textContent = p.category;
-                        document.getElementById('panel-source').textContent = p.source;
-                        
-                        const imgEl = document.getElementById('panel-img');
-                        if (p.image) { imgEl.src = p.image; imgEl.style.display = 'block'; } 
-                        else { imgEl.style.display = 'none'; }
-
-                        // ✨ 新增：判断是否有链接，有就显示按钮并赋值
-                        const linkEl = document.getElementById('panel-link');
-                        if (p.link) { 
-                            linkEl.href = p.link; 
-                            linkEl.style.display = 'inline-block'; 
-                        } else { 
-                            linkEl.style.display = 'none'; 
-                        }
-
-                        panel.classList.add('active');
-                    });
-                }
-            });
-            currentGeoJsonLayer.addTo(map);
-
-            const heatPoints = eventsArray.map(e => [e.lat, e.lng, 1]); 
-            heatLayer = L.heatLayer(heatPoints, {
-                radius: 35, 
-                blur: 20, 
-                maxZoom: 13,
-                willReadFrequently: true, 
-                gradient: {0.4: 'blue', 0.6: 'lime', 0.8: 'yellow', 1: 'red'}
-            });
-
-            filterMarkersByTime();
-        }
-        function filterMarkersByTime() {
-            if (!map || !map.timeDimension) return;
-            const currentYear = new Date(map.timeDimension.getCurrentTime()).getFullYear();
-            
-            if (isHeatMode) {
-                if (currentGeoJsonLayer && map.hasLayer(currentGeoJsonLayer)) { map.removeLayer(currentGeoJsonLayer); }
-                if (polygonLayer && map.hasLayer(polygonLayer)) { map.removeLayer(polygonLayer); } // 热力图时隐藏区划
-                
-                currentMarkers.forEach(m => { if (m instanceof L.Polyline) m.setStyle({ opacity: 0 }); });
-                
-                if (heatLayer && map.hasLayer(heatLayer)) {
-                    const currentEvents = getFilteredEvents().filter(e => e.year <= currentYear);
-                    const currentHeatPoints = currentEvents.map(e => [e.lat, e.lng, 1]);
-                    heatLayer.setLatLngs(currentHeatPoints);
-                } else if (heatLayer && !map.hasLayer(heatLayer)) {
-                    heatLayer.addTo(map);
-                }
-                return;
-            }
-
-            if (heatLayer && map.hasLayer(heatLayer)) { map.removeLayer(heatLayer); }
-            if (currentGeoJsonLayer && !map.hasLayer(currentGeoJsonLayer)) { currentGeoJsonLayer.addTo(map); }
-            
-            // ✨ 普通模式下恢复区划显示
-            if (polygonLayer && !map.hasLayer(polygonLayer)) { map.addLayer(polygonLayer); }
-
-            // ✨ 针对多边形的处理
-            if (polygonLayer) {
-                polygonLayer.eachLayer(function(layer) {
-                    if (layer.myYear) {
-                        const isVisible = layer.myYear <= currentYear;
-                        if (isVisible) {
-                            layer.setStyle({ opacity: 0.6, fillOpacity: 0.1 }); // 显示
-                        } else {
-                            layer.setStyle({ opacity: 0, fillOpacity: 0 });    // 隐藏
-                        }
-                    }
-                });
-            }
-
-            currentMarkers.forEach(layer => {
-                if (layer && layer.myYear) {
-                    const isVisible = layer.myYear <= currentYear;
-                    if (layer.setStyle) {
-                        if (layer instanceof L.Polyline) { layer.setStyle({ opacity: isVisible ? 1 : 0 }); } 
-                        else { layer.setStyle({ opacity: isVisible ? 1 : 0, fillOpacity: isVisible ? 1 : 0 }); }
-                    }
-                    if (typeof layer.getElement === 'function') {
-                        const el = layer.getElement();
-                        if (el) { el.style.pointerEvents = isVisible ? 'auto' : 'none'; }
-                    }
-                }
-            });
-        }
-
-        function getFilteredEvents() {
-            const keyword = document.getElementById('search-input').value.trim();
-            const selectedCats = Array.from(document.querySelectorAll('.cat-filter:checked')).map(cb => cb.value);
-            return allEvents.filter(item => {
-                const matchKeyword = keyword === '' || item.title.includes(keyword) || item.desc.includes(keyword) || item.category.includes(keyword);
-                return matchKeyword && selectedCats.includes(item.category);
-            });
-        }
-
-        function applyFilters() {
-            const filtered = getFilteredEvents();
-            document.getElementById('stats-text').textContent = `当前展示 ${filtered.length} / 共 ${allEvents.length} 个事件`;
-            updateChartData(filtered);
-            renderData(filtered);
-        }
-
-        document.getElementById('close-panel').addEventListener('click', function() {
-            document.getElementById('side-panel').classList.remove('active');
-        });
-        map.on('click', function(e) {
-            if (e.originalEvent.target.id === 'map' || e.originalEvent.target.classList.contains('leaflet-container')) {
-                document.getElementById('side-panel').classList.remove('active');
-            }
-        });
-
-        document.getElementById('heat-mode-toggle').addEventListener('change', function(e) {
-            isHeatMode = e.target.checked;
-            filterMarkersByTime();
-        });
-        // ==========================================
-        // ✨ 加载西安市各区县边界 (面数据)
-        // ==========================================
-        fetch('xian_county_fixed.geojson') // 换成刚才修复好的文件
-            .then(res => res.json())
-            .then(data => {
-                polygonLayer = L.geoJSON(data, {
-                    style: function(feature) {
-                        const name = feature.properties.name;
-                        let style = {
-                            color: '#3388ff', weight: 2, opacity: 0.4,
-                            fillColor: '#3388ff', fillOpacity: 0.05, dashArray: '4, 4'
-                        };
-                        
-                        // 给特定区县设定特定年份和颜色（模拟撤县设区）
-                        let myYear = 1900; // 默认很早
-                        if (name === '高陵区') { myYear = 2014; style.color = '#fd7e14'; style.fillColor = '#fd7e14'; }
-                        if (name === '鄠邑区') { myYear = 2016; style.color = '#fd7e14'; style.fillColor = '#fd7e14'; }
-                        if (name === '西咸新区') { myYear = 2014; style.color = '#fd7e14'; style.fillColor = '#fd7e14'; }
-                        
-                        feature.properties.myYear = myYear; // 绑定时间
-                        return style;
-                    },
-                    onEachFeature: function(feature, layer) {
-                        layer.myYear = feature.properties.myYear;
-                        
-                        if (feature.properties && feature.properties.name) {
-                            layer.bindTooltip(feature.properties.name, { sticky: true });
-                        }
-                        
-                        layer.on('mouseover', function(e) {
-                            const l = e.target;
-                            if (l.myYear <= new Date(map.timeDimension.getCurrentTime()).getFullYear()) {
-                                l.setStyle({ fillOpacity: 0.3, weight: 3 });
-                            }
-                        });
-                        layer.on('mouseout', function(e) {
-                            const l = e.target;
-                            l.setStyle({ fillOpacity: 0.05, weight: 2 });
-                        });
-                    }
-                }).addTo(map);
-
-                // ✨ 让区划图层也跟着时间轴隐藏/显示
-                currentMarkers.push(polygonLayer); 
-                filterMarkersByTime(); // 触发一次过滤
-            })
-            .catch(err => console.log("区划边界加载失败", err));
-        fetch('events.json')
-            .then(response => response.json())
-            .then(events => {
-                allEvents = events;
-                const allTimes = [...new Set(allEvents.map(e => `${e.year}-01-01T00:00:00Z`))].sort();
-                map.timeDimension.setAvailableTimes(allTimes, true);
-                applyFilters();
-
-                setTimeout(() => {
-                    document.getElementById('loading-overlay').classList.add('hidden');
-                    setTimeout(() => { map.timeDimension.setCurrentTime(new Date('2024-12-31T23:59:59Z').getTime()); }, 200);
-                }, 500);
-
-                map.timeDimension.on('timeload', function(e) { debouncedUpdateChart(); });
-                document.getElementById('search-input').addEventListener('input', applyFilters);
-                document.querySelectorAll('.cat-filter').forEach(cb => cb.addEventListener('change', applyFilters));
-
-                barChart.on('click', function (params) {
-                    map.timeDimension.setCurrentTime(new Date(`${parseInt(params.name)}-01-01T00:00:00`).getTime());
-                });
-                pieChart.on('click', function (params) {
-                    document.querySelectorAll('.cat-filter').forEach(cb => { cb.checked = (cb.value === params.name); });
-                    applyFilters();
-                });
-            })
-            .catch(error => { console.error('加载失败:', error); });
-
-        window.addEventListener('resize', function() { barChart.resize(); pieChart.resize(); });
-    </script>
+    <!-- 我们拆分出来的本地核心逻辑 -->
+    <script src="main.js"></script>
 </body>
 </html>

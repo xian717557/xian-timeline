@@ -1,0 +1,347 @@
+// ==========================================
+// 1. 初始化地图与图层控制
+// ==========================================
+const map = L.map('map', {
+    center: [34.3416, 108.9398], zoom: 11,
+    timeDimension: true, timeDimensionControl: true,
+    timeDimensionControlOptions: {
+        position: 'bottomleft', autoPlay: false, minSpeed: 1, maxSpeed: 10,
+        timeSliderDragUpdate: true, loop: false
+    }
+});
+
+// 创建底图图层
+const vecLayer = L.tileLayer('https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', { maxZoom: 19 }).addTo(map);
+const satLayer = L.tileLayer('https://webst01.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}', { maxZoom: 19 });
+L.control.layers({ "现代矢量图": vecLayer, "卫星实景图": satLayer }, null, { position: 'topright' }).addTo(map);
+
+// ==========================================
+// 2. 全局变量
+// ==========================================
+const barChart = echarts.init(document.getElementById('bar-chart'));
+const pieChart = echarts.init(document.getElementById('pie-chart'));
+
+let allEvents = [];
+let currentGeoJsonLayer = null;
+let currentMarkers = [];
+let heatLayer = null; 
+let isHeatMode = false; 
+let areaLayers = {}; // ✨ 新增：用来存放所有区划图层，方便联动
+
+let chartUpdateTimeout = null;
+function debouncedUpdateChart() {
+    clearTimeout(chartUpdateTimeout);
+    chartUpdateTimeout = setTimeout(() => {
+        updateChartData(getFilteredEvents());
+        filterMarkersByTime();
+    }, 30); 
+}
+
+// ==========================================
+// 3. 加载西安市区划边界面 & 写入字典
+// ==========================================
+fetch('xian_county.geojson') // ⚠️ 确保你的文件名叫这个，且里面有 name 属性
+    .then(res => res.json())
+    .then(data => {
+        L.geoJSON(data, {
+            style: function() {
+                return { 
+                    color: '#3388ff', weight: 1.5, opacity: 0.6, 
+                    fillColor: '#3388ff', fillOpacity: 0.08, dashArray: '5, 5' 
+                };
+            },
+            onEachFeature: function (feature, layer) {
+                const props = feature.properties || {};
+                const areaName = props.name || props.NAME || props.Name || props.fullname || props.FULLNAME || props.district || "未知区域";
+                
+                // ✨ 核心：把图层存入字典
+                if (areaName !== "未知区域") {
+                    areaLayers[areaName] = layer;
+                }
+
+                layer.on('mouseover', function() {
+                    layer.setStyle({ weight: 3, color: '#ff7800', fillOpacity: 0.3 });
+                });
+                layer.on('mouseout', function() {
+                    // 如果这个区没在闪烁高亮状态，才恢复默认蓝色
+                    if (!layer.isHighlighted) {
+                        layer.setStyle({ weight: 1.5, color: '#3388ff', fillOpacity: 0.08 });
+                    }
+                });
+
+                layer.bindTooltip(areaName, { permanent: false, direction: 'center', className: 'area-tooltip' });
+                layer.bindPopup(`<b style="font-size:16px;">📍 ${areaName}</b>`);
+            }
+        }).addTo(map);
+    })
+    .catch(err => console.log("区划面文件未找到或格式错误，跳过加载。", err));
+
+// ==========================================
+// 4. 颜色映射
+// ==========================================
+function getColor(category) {
+    if (category === '交通') return '#007bff';
+    if (category === '规划') return '#dc3545';
+    if (category === '文化') return '#28a745';
+    if (category === '经济') return '#6f42c1';
+    if (category === '生态') return '#17a2b8';
+    if (category === '区划') return '#fd7e14';
+    if (category === '政策') return '#e83e8c';
+    return '#6c757d';
+}
+
+// ==========================================
+// 5. ✨ 新增：区划面高亮动画函数
+// ==========================================
+function highlightArea(text, duration = 3000) {
+    // 遍历所有区，看看事件标题里有没有包含这个区的名字
+    for (let areaName in areaLayers) {
+        // 比如标题是"高陵撤县设区"，包含"高陵区"
+        if (text.includes(areaName) || areaName.includes(text)) {
+            const targetLayer = areaLayers[areaName];
+            
+            // 1. 变红变亮
+            targetLayer.isHighlighted = true;
+            targetLayer.setStyle({
+                color: '#ff0000', weight: 4, fillColor: '#ff0000', fillOpacity: 0.4
+            });
+            targetLayer.bringToFront(); 
+
+            // 2. 延时恢复原样
+            if (targetLayer._highlightTimer) clearTimeout(targetLayer._highlightTimer);
+            targetLayer._highlightTimer = setTimeout(() => {
+                targetLayer.isHighlighted = false;
+                targetLayer.setStyle({
+                    color: '#3388ff', weight: 1.5, fillColor: '#3388ff', fillOpacity: 0.08
+                });
+            }, duration);
+        }
+    }
+}
+
+// ==========================================
+// 6. 图表更新逻辑
+// ==========================================
+function updateChartData(eventsArray) {
+    const currentYear = new Date(map.timeDimension.getCurrentTime()).getFullYear();
+    const yearCounts = {};
+    eventsArray.forEach(e => { yearCounts[e.year] = (yearCounts[e.year] || 0) + 1; });
+    const years = Object.keys(yearCounts).sort((a, b) => a - b);
+    const counts = years.map(y => yearCounts[y]);
+
+    barChart.setOption({
+        title: { text: '事件年份分布', left: 'center', textStyle: { fontSize: 13 } },
+        tooltip: { trigger: 'axis' },
+        grid: { left: '5%', right: '5%', bottom: '10%', top: '20%', containLabel: true },
+        xAxis: { type: 'category', data: years, axisLabel: { interval: 0, fontSize: 11 } },
+        yAxis: { type: 'value', minInterval: 1 },
+        series: [{
+            name: '事件数', type: 'bar', data: counts, barMaxWidth: 30,
+            itemStyle: { color: function(params) { return parseInt(years[params.dataIndex]) <= currentYear ? '#5470c6' : '#e0e0e0'; } }
+        }]
+    }, true);
+
+    const catCounts = {};
+    eventsArray.forEach(e => { catCounts[e.category] = (catCounts[e.category] || 0) + 1; });
+    const pieData = Object.keys(catCounts).map(cat => ({
+        name: cat, value: catCounts[cat], itemStyle: { color: getColor(cat) }
+    }));
+
+    pieChart.setOption({
+        title: { text: '事件类型占比', left: 'center', textStyle: { fontSize: 13 } },
+        tooltip: { trigger: 'item', formatter: '{b}: {c}个 ({d}%)' },
+        series: [{
+            type: 'pie', radius: ['35%', '65%'], center: ['50%', '55%'],
+            data: pieData, label: { show: true, fontSize: 11 }
+        }]
+    }, true);
+}
+
+// ==========================================
+// 7. 地图渲染逻辑
+// ==========================================
+function eventsToGeoJSON(events) {
+    return {
+        type: 'FeatureCollection',
+        features: events.map(e => ({
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: [e.lng, e.lat] },
+            properties: { 
+                time: `${e.year}-01-01`, title: e.title, year: e.year, category: e.category, 
+                desc: e.desc, source: e.source, image: e.image, link: e.link 
+            }
+        }))
+    };
+}
+
+function renderData(eventsArray) {
+    if (currentGeoJsonLayer) { map.removeLayer(currentGeoJsonLayer); }
+    if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
+    currentMarkers = [];
+
+    // 1. 画线
+    eventsArray.forEach(e => {
+        if (e.path && e.path.length > 0) {
+            const antLine = L.polyline.antPath(e.path, {
+                "color": getColor(e.category), "weight": 4, "opacity": 1, "delay": 800,
+                "dashArray": [10, 20], "pulseColor": "#FFFFFF", "paused": false
+            });
+            antLine.myYear = e.year; 
+            currentMarkers.push(antLine);
+            antLine.addTo(map);
+        }
+    });
+
+    // 2. 画点
+    const geojsonData = eventsToGeoJSON(eventsArray);
+    currentGeoJsonLayer = L.geoJSON(geojsonData, {
+        pointToLayer: function (feature, latlng) {
+            return L.circleMarker(latlng, { radius: 7, fillColor: getColor(feature.properties.category), color: '#fff', weight: 2, opacity: 1, fillOpacity: 1 });
+        },
+        onEachFeature: function (feature, layer) {
+            layer.myYear = feature.properties.year; 
+            currentMarkers.push(layer);
+            const p = feature.properties;
+            layer.bindTooltip(`${p.year} · ${p.title}`, { direction: 'top', offset: [0, -10] });
+            
+            layer.on('click', function() {
+                // 弹窗逻辑
+                const panel = document.getElementById('side-panel');
+                document.getElementById('panel-title').textContent = `${p.year} · ${p.title}`;
+                document.getElementById('panel-desc').textContent = p.desc;
+                document.getElementById('panel-year').textContent = p.year + '年';
+                document.getElementById('panel-category').textContent = p.category;
+                document.getElementById('panel-source').textContent = p.source;
+                
+                const imgEl = document.getElementById('panel-img');
+                if (p.image) { imgEl.src = p.image; imgEl.style.display = 'block'; } else { imgEl.style.display = 'none'; }
+                
+                const linkEl = document.getElementById('panel-link');
+                if (p.link) { linkEl.href = p.link; linkEl.style.display = 'block'; } else { linkEl.style.display = 'none'; }
+                
+                panel.classList.add('active');
+
+                // ✨ 核心触发：联动高亮
+                highlightArea(p.title + p.desc); 
+            });
+        }
+    });
+    currentGeoJsonLayer.addTo(map);
+
+    // 3. 准备热力图数据
+    const heatPoints = eventsArray.map(e => [e.lat, e.lng, 1]);
+    heatLayer = L.heatLayer(heatPoints, {
+        radius: 35, blur: 20, maxZoom: 13, willReadFrequently: true,
+        gradient: {0.4: 'blue', 0.6: 'lime', 0.8: 'yellow', 1: 'red'}
+    });
+
+    filterMarkersByTime();
+}
+
+// ==========================================
+// 8. 时间过滤与显示逻辑
+// ==========================================
+function filterMarkersByTime() {
+    if (!map || !map.timeDimension) return;
+    const currentYear = new Date(map.timeDimension.getCurrentTime()).getFullYear();
+    
+    if (isHeatMode) {
+        if (currentGeoJsonLayer && map.hasLayer(currentGeoJsonLayer)) map.removeLayer(currentGeoJsonLayer);
+        currentMarkers.forEach(m => { if (m instanceof L.Polyline) m.setStyle({ opacity: 0 }); });
+        
+        if (heatLayer && map.hasLayer(heatLayer)) {
+            const currentEvents = getFilteredEvents().filter(e => e.year <= currentYear);
+            heatLayer.setLatLngs(currentEvents.map(e => [e.lat, e.lng, 1]));
+        } else if (heatLayer && !map.hasLayer(heatLayer)) {
+            heatLayer.addTo(map);
+        }
+        return;
+    }
+
+    if (heatLayer && map.hasLayer(heatLayer)) map.removeLayer(heatLayer);
+    if (currentGeoJsonLayer && !map.hasLayer(currentGeoJsonLayer)) currentGeoJsonLayer.addTo(map);
+
+    currentMarkers.forEach(layer => {
+        if (layer && layer.myYear) {
+            const isVisible = layer.myYear <= currentYear;
+            if (layer.setStyle) {
+                if (layer instanceof L.Polyline) layer.setStyle({ opacity: isVisible ? 1 : 0 });
+                else layer.setStyle({ opacity: isVisible ? 1 : 0, fillOpacity: isVisible ? 1 : 0 });
+            }
+            if (typeof layer.getElement === 'function') {
+                const el = layer.getElement();
+                if (el) el.style.pointerEvents = isVisible ? 'auto' : 'none';
+            }
+        }
+    });
+}
+
+// ==========================================
+// 9. 数据过滤逻辑
+// ==========================================
+function getFilteredEvents() {
+    const keyword = document.getElementById('search-input').value.trim();
+    const selectedCats = Array.from(document.querySelectorAll('.cat-filter:checked')).map(cb => cb.value);
+    return allEvents.filter(item => {
+        const matchKeyword = keyword === '' || item.title.includes(keyword) || item.desc.includes(keyword) || item.category.includes(keyword);
+        return matchKeyword && selectedCats.includes(item.category);
+    });
+}
+
+function applyFilters() {
+    const filtered = getFilteredEvents();
+    document.getElementById('stats-text').textContent = `当前展示 ${filtered.length} / 共 ${allEvents.length} 个事件`;
+    updateChartData(filtered); 
+    renderData(filtered);
+}
+
+// ==========================================
+// 10. 事件监听与初始化
+// ==========================================
+document.getElementById('close-panel').addEventListener('click', function() {
+    document.getElementById('side-panel').classList.remove('active');
+});
+map.on('click', function(e) {
+    if (e.originalEvent.target.id === 'map' || e.originalEvent.target.classList.contains('leaflet-container')) {
+        document.getElementById('side-panel').classList.remove('active');
+    }
+});
+
+document.getElementById('heat-mode-toggle').addEventListener('change', function(e) {
+    isHeatMode = e.target.checked;
+    filterMarkersByTime();
+});
+
+fetch('events.json')
+    .then(response => response.json())
+    .then(events => {
+        allEvents = events;
+        const allTimes = [...new Set(allEvents.map(e => `${e.year}-01-01T00:00:00Z`))].sort();
+        map.timeDimension.setAvailableTimes(allTimes, true);
+        applyFilters();
+
+        // 加载动画与初始时间设置
+        setTimeout(() => {
+            document.getElementById('loading-overlay').classList.add('hidden');
+            setTimeout(() => { map.timeDimension.setCurrentTime(new Date('2024-12-31T23:59:59Z').getTime()); }, 200);
+        }, 500);
+
+        map.timeDimension.on('timeload', function(e) { debouncedUpdateChart(); });
+        
+        document.getElementById('search-input').addEventListener('input', applyFilters);
+        document.querySelectorAll('.cat-filter').forEach(cb => cb.addEventListener('change', applyFilters));
+
+        barChart.on('click', function (params) {
+            map.timeDimension.setCurrentTime(new Date(`${parseInt(params.name)}-01-01T00:00:00`).getTime());
+        });
+        pieChart.on('click', function (params) {
+            document.querySelectorAll('.cat-filter').forEach(cb => { cb.checked = (cb.value === params.name); });
+            applyFilters();
+        });
+    })
+    .catch(error => { 
+        console.error('加载失败:', error); 
+        document.getElementById('loading-overlay').innerHTML = '<div style="color:red; font-size:20px;">数据加载失败，请检查 events.json 格式</div>';
+    });
+
+window.addEventListener('resize', function() { barChart.resize(); pieChart.resize(); });
