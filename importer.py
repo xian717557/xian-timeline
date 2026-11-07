@@ -1,8 +1,5 @@
 import json
 
-import json
-
-# ✨ 新增：简单的关键词映射，让政策自动落到对应区域
 LOCATION_MAP = {
     "高新": [34.2060, 108.8560],
     "浐灞": [34.3870, 109.0430],
@@ -20,27 +17,8 @@ def get_coords(title):
     for key, coords in LOCATION_MAP.items():
         if key in title:
             return coords[0], coords[1]
-    # 如果标题里没有地名，默认丢在市中心
     return 34.3416, 108.9398
 
-def merge_data():
-    # ... (前面读取文件代码不变) ...
-    
-    for policy in new_policies:
-        if policy['title'] not in existing_titles:
-            lat, lng = get_coords(policy['title']) # ✨ 调用函数获取坐标
-            
-            new_event = {
-                "year": policy['year'],
-                "title": policy['title'],
-                "category": "政策", # ✨ 给个新分类
-                "lat": lat,
-                "lng": lng,
-                "desc": f"来源：西安市政府官网。{policy['title']}",
-                "source": "西安市政府官网",
-                "link": policy['link']
-            }
-            # ... (后续追加和排序代码不变) ...
 def merge_data():
     # 1. 读取现有数据
     try:
@@ -63,24 +41,23 @@ def merge_data():
 
     for policy in new_policies:
         if policy['title'] not in existing_titles:
-            # 构造符合 events.json 格式的数据
-            # 注意：这里我们缺少 lat/lng 等地图信息，先赋默认值或留空
-            # 实际上，政策类事件通常不直接对应一个精确坐标，可以用市中心坐标代替
+            lat, lng = get_coords(policy['title'])
+            
             new_event = {
                 "year": policy['year'],
                 "title": policy['title'],
-                "category": "规划", # 默认分类为规划，你可以手动修改
-                "lat": 34.3416,     # 默认西安市中心坐标
-                "lng": 108.9398,
+                "category": "政策", 
+                "lat": lat,
+                "lng": lng,
                 "desc": f"来源：西安市政府官网。{policy['title']}",
                 "source": "西安市政府官网",
-                "link": policy['link'] # 保留链接，方便回溯
+                "link": policy['link'] 
             }
             existing_events.append(new_event)
             existing_titles.add(policy['title'])
             added_count += 1
 
-    # 4. 排序：按年份升序，同年按标题排序（可选）
+    # 4. 排序：按年份升序
     existing_events.sort(key=lambda x: (x['year'], x['title']))
 
     # 5. 写入文件

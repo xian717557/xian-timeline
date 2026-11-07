@@ -23,6 +23,12 @@ const regionCenters = {
     "曲江": [34.2180, 108.9600],
     "秦岭": [34.0500, 108.8500]
 };
+// ✨ 宏观经济数据
+const macroData = {
+    years: [2010, 2011, 2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023],
+    gdp: [3241.49, 3864.21, 4369.37, 4884.13, 5474.77, 5801.20, 6282.65, 7469.85, 8349.86, 9321.59, 10020.39, 10688.28, 11486.51, 12010.76],
+    population: [846.78, 851.34, 855.29, 858.81, 862.75, 870.56, 883.21, 905.68, 1000.37, 1020.35, 1295.29, 1287.30, 1299.59, 1307.82]
+};
 const map = L.map('map', {
     center: [34.3416, 108.9398], zoom: 11,
     timeDimension: true, timeDimensionControl: true,
@@ -167,13 +173,13 @@ function resetSwipe() {
         satPanes[1].style.clipPath = 'none';
     }
 }
-L.control.layers({ "现代矢量图": vecLayer, "卫星实景图": satLayer }, null, { position: 'topright' }).addTo(map);
 
 // ==========================================
 // 2. 全局变量
 // ==========================================
 const barChart = echarts.init(document.getElementById('bar-chart'));
 const pieChart = echarts.init(document.getElementById('pie-chart'));
+const lineChart = echarts.init(document.getElementById('line-chart'));
 
 let allEvents = [];
 let currentGeoJsonLayer = null;
@@ -183,10 +189,13 @@ let isHeatMode = false;
 let areaLayers = {}; // ✨ 新增：用来存放所有区划图层，方便联动
 
 let chartUpdateTimeout = null;
+let flyTimeout = null;
 function debouncedUpdateChart() {
     clearTimeout(chartUpdateTimeout);
     chartUpdateTimeout = setTimeout(() => {
         updateChartData(getFilteredEvents());
+        const currentYear = new Date(map.timeDimension.getCurrentTime()).getFullYear();
+        updateMacroChart(currentYear); 
         filterMarkersByTime();
     }, 30); 
 }
@@ -201,8 +210,8 @@ fetch('xian_county.geojson') // ⚠️ 确保你的文件名叫这个，且里�
             pane: 'areasPane', // ✨ 新增：让面永远在点的下面
             style: function() {
                 return { 
-                    color: '#3388ff', weight: 1.5, opacity: 0.6, 
-                    fillColor: '#3388ff', fillOpacity: 0.08, dashArray: '5, 5' 
+                    color: '#3388ff', weight: 1.5, opacity: 0.5, 
+                    fillColor: '#3388ff', fillOpacity: 0.05, 
                 };
             },
             onEachFeature: function (feature, layer) {
@@ -311,6 +320,43 @@ function updateChartData(eventsArray) {
             type: 'pie', radius: ['35%', '65%'], center: ['50%', '55%'],
             data: pieData, label: { show: true, fontSize: 11 }
         }]
+    }, true);
+}
+// ✨ 更新宏观折线图（随年份动态生长）
+function updateMacroChart(currentYear) {
+    // 找出当前年份对应的数据索引（确保不超过数据最大年份）
+    let maxIdx = macroData.years.findIndex(y => y === currentYear);
+    if (maxIdx === -1) {
+        if (currentYear > 2023) maxIdx = macroData.years.length - 1;
+        else if (currentYear < 2010) maxIdx = 0;
+    }
+
+    // 只截取到当前年份的数据
+    const displayYears = macroData.years.slice(0, maxIdx + 1);
+    const displayGdp = macroData.gdp.slice(0, maxIdx + 1);
+    const displayPop = macroData.population.slice(0, maxIdx + 1);
+
+    lineChart.setOption({
+        title: { text: '西安宏观经济指标', left: 'center', textStyle: { fontSize: 13 } },
+        tooltip: { trigger: 'axis' },
+        legend: { top: 25, data: ['GDP(亿元)', '常住人口(万人)'], textStyle: { fontSize: 10 } },
+        grid: { left: '10%', right: '10%', bottom: '15%', top: '30%', containLabel: true },
+        xAxis: { type: 'category', data: displayYears, axisLabel: { fontSize: 10 } },
+        yAxis: [
+            { type: 'value', name: 'GDP', axisLabel: { fontSize: 10 }, splitLine: { show: false } },
+            { type: 'value', name: '人口', axisLabel: { fontSize: 10 }, splitLine: { show: false } }
+        ],
+        series: [
+            {
+                name: 'GDP(亿元)', type: 'line', yAxisIndex: 0, data: displayGdp,
+                smooth: true, itemStyle: { color: '#e83e8c' },
+                areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{offset: 0, color: 'rgba(232,62,140,0.5)'}, {offset: 1, color: 'rgba(232,62,140,0)'}]) }
+            },
+            {
+                name: '常住人口(万人)', type: 'line', yAxisIndex: 1, data: displayPop,
+                smooth: true, itemStyle: { color: '#007bff' }
+            }
+        ]
     }, true);
 }
 
@@ -485,6 +531,8 @@ function applyFilters() {
     document.getElementById('stats-text').textContent = `当前展示 ${filtered.length} / 共 ${allEvents.length} 个事件`;
     updateChartData(filtered); 
     renderData(filtered);
+    const currentYear = new Date(map.timeDimension.getCurrentTime()).getFullYear();
+    updateMacroChart(currentYear);
 }
 
 // ==========================================
@@ -575,35 +623,7 @@ document.getElementById('heat-mode-toggle').addEventListener('change', function(
                 
                 // ... 后面的搜索框、图表点击等监听保持不变
 
-        // 增加一个防抖变量，防止手动拖动时间轴时镜头乱飞导致眩晕
-        let flyTimeout = null;
 
-        map.timeDimension.on('timeload', function(e) { 
-            debouncedUpdateChart(); 
-
-            // ✨ 电影级运镜逻辑
-            const currentDate = new Date(map.timeDimension.getCurrentTime());
-            const currentYear = currentDate.getFullYear();
-
-            // 当时间轴停下（或自动播放跳转）500毫秒后，镜头开始飞行
-            clearTimeout(flyTimeout);
-            flyTimeout = setTimeout(() => {
-                // 找出当前年份匹配的所有事件
-                const eventsThisYear = allEvents.filter(ev => ev.year === currentYear && ev.lat && ev.lng);
-                
-                if (eventsThisYear.length > 0) {
-                    // 选取当前年份的第一个事件作为飞行目标
-                    const target = eventsThisYear[0];
-                    
-                    // map.flyTo(坐标, 缩放级别, 动画配置)
-                    // 缩放级别 12 大概是能看到一个行政区划的视野
-                    map.flyTo([target.lat, target.lng], 12, {
-                        animate: true,
-                        duration: 2.0 // 飞行时间 2 秒
-                    });
-                }
-            }, 500); // 500毫秒防抖延迟
-        });
         
         document.getElementById('search-input').addEventListener('input', applyFilters);
         document.querySelectorAll('.cat-filter').forEach(cb => cb.addEventListener('change', applyFilters));
@@ -643,6 +663,7 @@ if (fullscreenBtn && exitDashboardBtn) {
             map.invalidateSize(); 
             barChart.resize(); 
             pieChart.resize();
+            lineChart.resize();
         }, 300);
     });
     
@@ -805,4 +826,9 @@ document.getElementById('poster-btn').addEventListener('click', function() {
             }, 500); // 给地图图片加载留一点时间
         });
     }, 100);
+});
+window.addEventListener('resize', function() { 
+    barChart.resize(); 
+    pieChart.resize(); 
+    lineChart.resize(); 
 });
