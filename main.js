@@ -187,6 +187,8 @@ let currentMarkers = [];
 let heatLayer = null; 
 let isHeatMode = false; 
 let areaLayers = {}; // ✨ 新增：用来存放所有区划图层，方便联动
+let metroLines = []; // ✨ 新增：存储地铁线路数据
+let currentMetroLayerGroup = null; // ✨ 新增：存储当前显示的地铁图层组
 
 let chartUpdateTimeout = null;
 let flyTimeout = null;
@@ -199,7 +201,32 @@ function debouncedUpdateChart() {
         filterMarkersByTime();
     }, 30); 
 }
+// ✨ 新增：根据时间绘制地铁线路
+function renderMetroLines(currentDateStr) {
+    // 如果之前有图层，先移除
+    if (currentMetroLayerGroup) {
+        map.removeLayer(currentMetroLayerGroup);
+    }
+    currentMetroLayerGroup = L.layerGroup().addTo(map);
 
+    metroLines.forEach(line => {
+        const lineDate = `${line.year}-${String(line.month).padStart(2, '0')}-${String(line.day).padStart(2, '0')}`;
+        
+        // 如果当前时间 >= 线路开通日期，则绘制
+        if (lineDate <= currentDateStr) {
+            const polyline = L.polyline(line.path, {
+                color: line.color,
+                weight: 4,          // 线宽，高德风格
+                opacity: 0.9,       // 透明度
+                lineCap: 'round',   // 圆角端点
+                lineJoin: 'round',  // 圆角连接
+                pane: 'overlayPane' // 确保线路在区划上方
+            }).bindTooltip(line.name, { sticky: true }); // 鼠标悬浮显示线路名
+
+            currentMetroLayerGroup.addLayer(polyline);
+        }
+    });
+}
 // ==========================================
 // 3. 加载西安市区划边界面 & 写入字典
 // ==========================================
@@ -393,17 +420,6 @@ function renderData(eventsArray) {
 
     // 1. 画线
     eventsArray.forEach(e => {
-        if (e.path && e.path.length > 0) {
-            const antLine = L.polyline.antPath(e.path, {
-                "color": getColor(e.category), "weight": 4, "opacity": 1, "delay": 800,
-                "dashArray": [10, 20], "pulseColor": "#FFFFFF", "paused": false
-            });
-    const mLine = e.month ? String(e.month).padStart(2, '0') : '01';
-    const dLine = e.day ? String(e.day).padStart(2, '0') : '01';
-    antLine.myDate = `${e.year}-${mLine}-${dLine}`;
-            currentMarkers.push(antLine);
-            antLine.addTo(map);
-        }
     });
 
     // 2. 画点
@@ -476,7 +492,7 @@ function filterMarkersByTime() {
     const currentMonth = String(currentTimeDate.getMonth() + 1).padStart(2, '0');
     const currentDay = String(currentTimeDate.getDate()).padStart(2, '0');
     const currentDateStr = `${currentYear}-${currentMonth}-${currentDay}`;
-    
+    renderMetroLines(currentDateStr);
     if (isHeatMode) {
         if (currentGeoJsonLayer && map.hasLayer(currentGeoJsonLayer)) map.removeLayer(currentGeoJsonLayer);
         currentMarkers.forEach(m => { if (m instanceof L.Polyline) m.setStyle({ opacity: 0 }); });
@@ -551,7 +567,14 @@ document.getElementById('heat-mode-toggle').addEventListener('change', function(
     isHeatMode = e.target.checked;
     filterMarkersByTime();
 });
-
+// 先加载地铁线路数据
+fetch('metro_lines.json')
+    .then(res => res.json())
+    .then(data => {
+        metroLines = data;
+        console.log('地铁线路数据已加载:', metroLines.length, '条线路');
+    })
+    .catch(err => console.error('加载 metro_lines.json 失败:', err));
         fetch('events.json')
             .then(response => response.json())
             .then(events => {
