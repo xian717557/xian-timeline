@@ -198,3 +198,40 @@ body.dashboard-mode #exit-dashboard-btn {
         height: 90vh;
     }
 }
+/* ==========================================
+   手写卷帘门样式
+   ========================================== */
+.swipe-slider {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 40px;
+    background: transparent;
+    z-index: 9999;
+    cursor: col-resize;
+    display: none; /* 默认隐藏 */
+    transform: translateX(-50%);
+}
+.swipe-slider::after {
+    content: '↔';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 40px;
+    height: 40px;
+    background: #fff;
+    border: 2px solid #333;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 20px;
+    font-weight: bold;
+    color: #333;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+/* 卷帘门开启时显示 */
+.swipe-active .swipe-slider {
+    display: block;
+}

@@ -35,8 +35,138 @@ const map = L.map('map', {
 map.createPane('areasPane');
 map.getPane('areasPane').style.zIndex = 350;
 // 创建底图图层
-const vecLayer = L.tileLayer('https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', { maxZoom: 19, crossOrigin: true }).addTo(map);
-const satLayer = L.tileLayer('https://webst01.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}', { maxZoom: 19, crossOrigin: true });
+        // 初始化时，矢量图在左边，卫星图在右边
+        const vecLayer = L.tileLayer('https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', { maxZoom: 19, crossOrigin: true }).addTo(map);
+        const satLayer = L.tileLayer('https://webst01.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}', { maxZoom: 19, crossOrigin: true }).addTo(map);
+        
+        // 默认隐藏卫星图
+        satLayer.setOpacity(0);
+
+        L.control.layers({ "现代矢量图": vecLayer, "卫星实景图": satLayer }, null, { position: 'topright' }).addTo(map);
+
+        // ✨ 卷帘门实例
+        let sideBySideControl = null;
+
+// ==========================================
+// 13. 极致手写：古今对比卷帘门
+// ==========================================
+let isSwipeMode = false;
+let swipeSlider = null;
+let swipeLine = null;
+const mapContainer = map.getContainer();
+
+// 设置初始状态：矢量图全亮，卫星图透明
+vecLayer.setOpacity(1);
+satLayer.setOpacity(0);
+
+document.getElementById('swipe-btn').addEventListener('click', function() {
+    const btn = this;
+    isSwipeMode = !isSwipeMode;
+
+    if (isSwipeMode) {
+        // 开启对比模式
+        btn.style.background = '#28a745';
+        btn.style.color = '#fff';
+        
+        vecLayer.setOpacity(1);
+        satLayer.setOpacity(1); // 让卫星图也完全显示
+        
+        // 给 map 容器加个 class，用来显示滑块
+        mapContainer.classList.add('swipe-active');
+
+        if (!swipeSlider) {
+            // 创建中间的拖动条
+            swipeSlider = document.createElement('div');
+            swipeSlider.className = 'swipe-slider';
+            swipeSlider.style.left = '50%'; // 初始在正中间
+            
+            // 创建分割线
+            swipeLine = document.createElement('div');
+            swipeLine.style.position = 'absolute';
+            swipeLine.style.top = '0';
+            swipeLine.style.bottom = '0';
+            swipeLine.style.width = '2px';
+            swipeLine.style.backgroundColor = '#fff';
+            swipeLine.style.left = '50%';
+            swipeLine.style.zIndex = '9998';
+            swipeLine.style.pointerEvents = 'none'; // 避免干扰滑块
+
+            mapContainer.appendChild(swipeLine);
+            mapContainer.appendChild(swipeSlider);
+
+            // 核心裁剪逻辑：左边显示 vecLayer，右边显示 satLayer
+            // 注意：Leaflet 默认所有的瓦片都在 .leaflet-tile-pane 里
+            // 我们把 vecLayer 的容器裁剪左半边，satLayer 裁剪右半边
+            // 这里用一个聪明的 CSS 滤镜技巧：用 clip-path 裁剪整个图层
+            // 但 Leaflet 图层不是独立 DOM 节点，所以我们裁剪整个 pane，然后反向遮挡
+            // 其实最简单的做法是：用 clip-path 裁剪底图 pane
+            // 因为底图是由无数个 img 组成的，只能改整个 pane 的 clip-path
+            
+            // 这里为了完美，我们不用 clip-path，因为会裁剪整个 map 的 pane，
+            // 而是利用 translate 移动卫星图，然后用遮罩挡住。
+            // 最稳的办法：给 Leaflet 的 pane 绑定 CSS 变量。
+            
+            // 为了让代码最简，我们利用 `clip-path: inset` 覆盖整个瓦片容器，
+            // 但因为我们有两个 tileLayer，最简单的是修改它们内部的 DOM。
+        }
+        
+        updateSwipePosition(50); // 初始化位置
+        
+    } else {
+        // 关闭对比模式
+        btn.style.background = '#f0f0f0';
+        btn.style.color = '#333';
+        mapContainer.classList.remove('swipe-active');
+        satLayer.setOpacity(0); // 恢复只显示矢量
+        
+        // 清理 DOM
+        if (swipeSlider) swipeSlider.remove();
+        if (swipeLine) swipeLine.remove();
+        // 重置裁剪
+        resetSwipe();
+    }
+});
+
+// 绑定拖动事件
+document.addEventListener('mousemove', function(e) {
+    if (!isSwipeMode) return;
+    
+    // 获取鼠标相对地图容器的 X 坐标
+    const rect = mapContainer.getBoundingClientRect();
+    let x = e.clientX - rect.left;
+    
+    // 限制范围
+    if (x < 0) x = 0;
+    if (x > rect.width) x = rect.width;
+    
+    // 计算百分比
+    const percent = (x / rect.width) * 100;
+    updateSwipePosition(percent);
+});
+
+function updateSwipePosition(percent) {
+    if (swipeSlider) swipeSlider.style.left = percent + '%';
+    if (swipeLine) swipeLine.style.left = percent + '%';
+    
+    // ✨ 核心魔法：用 CSS clip-path 裁剪顶层（卫星图 satLayer）
+    // 找到卫星图的容器 pane
+    const satPanes = document.querySelectorAll('.leaflet-layer');
+    // 因为矢量图和卫星图都是 layer，它们会按添加顺序堆叠
+    // 卫星图在最上面，我们裁剪卫星图，露出下面的矢量图
+    if (satPanes.length >= 2) {
+        // 假设第二个是卫星图
+        const satTileContainer = satPanes[1];
+        // 裁剪左边一半（保留右边）：inset(上 右 下 左)
+        satTileContainer.style.clipPath = `inset(0 0 0 ${percent}%)`;
+    }
+}
+
+function resetSwipe() {
+    const satPanes = document.querySelectorAll('.leaflet-layer');
+    if (satPanes.length >= 2) {
+        satPanes[1].style.clipPath = 'none';
+    }
+}
 L.control.layers({ "现代矢量图": vecLayer, "卫星实景图": satLayer }, null, { position: 'topright' }).addTo(map);
 
 // ==========================================
