@@ -35,8 +35,8 @@ const map = L.map('map', {
 map.createPane('areasPane');
 map.getPane('areasPane').style.zIndex = 350;
 // 创建底图图层
-const vecLayer = L.tileLayer('https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', { maxZoom: 19 }).addTo(map);
-const satLayer = L.tileLayer('https://webst01.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}', { maxZoom: 19 });
+const vecLayer = L.tileLayer('https://webrd01.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', { maxZoom: 19, crossOrigin: true }).addTo(map);
+const satLayer = L.tileLayer('https://webst01.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}', { maxZoom: 19, crossOrigin: true });
 L.control.layers({ "现代矢量图": vecLayer, "卫星实景图": satLayer }, null, { position: 'topright' }).addTo(map);
 
 // ==========================================
@@ -606,3 +606,73 @@ function renderPolicyList() {
         policyListContainer.appendChild(div);
     });
 }
+// ==========================================
+// 13. 一键生成专属海报
+// ==========================================
+document.getElementById('poster-btn').addEventListener('click', function() {
+    // 1. 获取当前侧边栏展示的数据
+    const title = document.getElementById('panel-title').textContent;
+    // 如果有类似 "2011 · 标题" 的格式，我们拆分一下
+    const titleParts = title.split(' · ');
+    const pureTitle = titleParts.length > 1 ? titleParts[1] : title;
+    
+    const year = document.getElementById('panel-year').textContent;
+    const cat = document.getElementById('panel-category').textContent;
+    const desc = document.getElementById('panel-desc').textContent;
+
+    // 2. 填充到隐藏的海报模板中
+    document.getElementById('poster-title').textContent = pureTitle;
+    document.getElementById('poster-year').textContent = year;
+    document.getElementById('poster-cat').textContent = cat;
+    
+    // 描述太长截断一下，防止溢出
+    document.getElementById('poster-desc').textContent = desc.length > 120 ? desc.substring(0, 120) + '...' : desc;
+
+    // 3. 改变按钮状态
+    const btn = document.getElementById('poster-btn');
+    const originalText = btn.textContent;
+    btn.textContent = "⏳ 正在生成中...";
+    btn.disabled = true;
+
+    // 4. 截取当前地图画面
+    // 注意：需要等地图拖拽动画结束才能截图，我们先让地图飞回当前中心点
+    const currentCenter = map.getCenter();
+    map.flyTo(currentCenter, map.getZoom(), { animate: false });
+
+    setTimeout(() => {
+        html2canvas(document.getElementById('map'), {
+            useCORS: true, // 允许跨域图片
+            allowTaint: false,
+            backgroundColor: '#111'
+        }).then(mapCanvas => {
+            // 将截取的地图转换为图片
+            const mapImg = mapCanvas.toDataURL("image/jpeg");
+            
+            // 塞入海报模板中
+            const mapContainer = document.getElementById('poster-map-container');
+            mapContainer.innerHTML = `<img src="${mapImg}" style="width:100%; height:100%; object-fit:cover;">`;
+
+            // 5. 生成最终海报
+            setTimeout(() => {
+                html2canvas(document.getElementById('poster-template'), {
+                    useCORS: true,
+                    scale: 2, // 提高清晰度
+                    backgroundColor: '#ffffff'
+                }).then(posterCanvas => {
+                    // 将海报转换为可下载的图片
+                    const finalImg = posterCanvas.toDataURL("image/jpeg", 0.9);
+                    
+                    // 创建一个 a 标签自动下载
+                    const a = document.createElement('a');
+                    a.href = finalImg;
+                    a.download = `西安城市档案_${pureTitle}.jpg`;
+                    a.click();
+
+                    // 恢复按钮
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                });
+            }, 500); // 给地图图片加载留一点时间
+        });
+    }, 100);
+});
