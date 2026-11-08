@@ -34,7 +34,7 @@ const map = L.map('map', {
     timeDimension: true, timeDimensionControl: true,
     timeDimensionControlOptions: {
         position: 'bottomleft', autoPlay: false, minSpeed: 1, maxSpeed: 10,
-        timeSliderDragUpdate: true, loop: true
+        timeSliderDragUpdate: true, loop: false
     }
 });
 // 创建专属的区划面图层容器，层级设为 350（低于默认的点图层 400）
@@ -614,7 +614,7 @@ fetch('metro_lines.json')
                 const allTimes = allEvents.map(e => {
                     const m = e.month ? String(e.month).padStart(2, '0') : '01';
                     const d = e.day ? String(e.day).padStart(2, '0') : '01';
-                    return `${e.year}-${m}-${d}T00:00:00Z`;
+                    return `${e.year}-${m}-${d}T00:00:00`;
                 }).sort();
                 
                 // 去重并设置给时间轴
@@ -941,3 +941,94 @@ function showAISlice(title, text) {
     clearTimeout(sliceDiv._timer);
     sliceDiv._timer = setTimeout(() => { sliceDiv.style.display = 'none'; }, 10000);
 }
+// ==========================================
+// 15. 电影级自动演示模式 (索引绝对精准版)
+// ==========================================
+const cinemaBtn = document.getElementById('cinema-btn');
+const exitCinemaBtn = document.getElementById('exit-cinema-btn');
+let cinemaInterval = null;
+let isCinemaPlaying = false;
+
+cinemaBtn.addEventListener('click', startCinema);
+exitCinemaBtn.addEventListener('click', stopCinema);
+
+function startCinema() {
+    if (isCinemaPlaying) return;
+    isCinemaPlaying = true;
+    
+    document.body.classList.add('cinema-mode');
+    document.getElementById('cinema-text-overlay').style.display = 'block';
+    cinemaBtn.textContent = "🎬 演示中...";
+
+    // 1. 获取插件内部真正认可的时间数组
+    const availableTimes = map.timeDimension.getAvailableTimes();
+    if (!availableTimes || availableTimes.length === 0) return;
+
+    // 2. 找出每一年对应的“绝对索引”
+    const yearToIndexMap = {};
+    availableTimes.forEach((timeStr, index) => {
+        const y = new Date(timeStr).getFullYear();
+        if (!yearToIndexMap[y]) {
+            yearToIndexMap[y] = index; // 只记录每年第一次出现的索引
+        }
+    });
+
+    // 3. 过滤掉 2026 这种未来年份，并排序
+    const currentYear = new Date().getFullYear();
+    const validYears = Object.keys(yearToIndexMap)
+        .map(Number)
+        .filter(y => y <= currentYear)
+        .sort((a, b) => a - b);
+    
+    if (validYears.length === 0) return;
+    let currentIndex = 0;
+
+    // 4. 初始化：直接跳到第一年（1953）
+    map.timeDimension.setCurrentTimeIndex(yearToIndexMap[validYears[0]]);
+
+    // 5. 开启定时器
+    clearInterval(cinemaInterval);
+    cinemaInterval = setInterval(() => {
+        currentIndex++;
+        if (currentIndex >= validYears.length) {
+            stopCinema();
+            return;
+        }
+        
+        const targetYear = validYears[currentIndex];
+        console.log("正在播放:", targetYear);
+        
+        // ✨ 核心杀招：用索引直接插队，绝对无视时区和格式问题
+        map.timeDimension.setCurrentTimeIndex(yearToIndexMap[targetYear]);
+        
+    }, 3500); 
+}
+
+function stopCinema() {
+    isCinemaPlaying = false;
+    clearInterval(cinemaInterval);
+    document.body.classList.remove('cinema-mode');
+    document.getElementById('cinema-text-overlay').style.display = 'none';
+    cinemaBtn.textContent = "🎬 自动演示";
+}
+
+// 字幕系统保持原样，不用动它
+map.timeDimension.on('timeload', function(e) {
+    if (!document.body.classList.contains('cinema-mode')) return;
+
+    const currentYear = new Date(map.timeDimension.getCurrentTime()).getFullYear();
+    const eventsThisYear = allEvents.filter(ev => parseInt(ev.year) === currentYear);
+    
+    if (eventsThisYear.length > 0) {
+        const yearEl = document.getElementById('cinema-year');
+        const eventEl = document.getElementById('cinema-event');
+        const overlay = document.getElementById('cinema-text-overlay');
+
+        yearEl.textContent = `${currentYear} 年`;
+        eventEl.textContent = eventsThisYear[0].title;
+
+        overlay.classList.remove('cinema-subtitle');
+        void overlay.offsetWidth; 
+        overlay.classList.add('cinema-subtitle');
+    }
+});
