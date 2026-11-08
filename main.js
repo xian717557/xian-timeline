@@ -224,6 +224,16 @@ function renderMetroLines(currentDateStr) {
             }).bindTooltip(line.name, { sticky: true }); // 鼠标悬浮显示线路名
 
             currentMetroLayerGroup.addLayer(polyline);
+            line.path.forEach(point => {
+                const stationMarker = L.circleMarker(point, {
+                    radius: 3, // 小圆点
+                    fillColor: '#fff',
+                    color: line.color,
+                    weight: 2,
+                    fillOpacity: 1
+                });
+                currentMetroLayerGroup.addLayer(stationMarker);
+            });
         }
     });
 }
@@ -238,7 +248,7 @@ fetch('xian_county.geojson') // ⚠️ 确保你的文件名叫这个，且里�
             style: function() {
                 return { 
                     color: '#3388ff', weight: 1.5, opacity: 0.5, 
-                    fillColor: '#3388ff', fillOpacity: 0.05, 
+                    fillColor: '#3388ff', fillOpacity: 0.02, 
                 };
             },
             onEachFeature: function (feature, layer) {
@@ -423,7 +433,12 @@ function renderData(eventsArray) {
     });
 
     // 2. 画点
-    const geojsonData = eventsToGeoJSON(eventsArray);
+   const geojsonData = eventsToGeoJSON(eventsArray);
+    geojsonData.features.forEach(f => {
+        // 在原本的经纬度上加上一个极小极小的随机数（大概在10米范围内）
+        f.geometry.coordinates[0] += (Math.random() - 0.5) * 0.0001;
+        f.geometry.coordinates[1] += (Math.random() - 0.5) * 0.0001;
+    });
     currentGeoJsonLayer = L.geoJSON(geojsonData, {
         pointToLayer: function (feature, latlng) {
             return L.circleMarker(latlng, { radius: 7, fillColor: getColor(feature.properties.category), color: '#fff', weight: 2, opacity: 1, fillOpacity: 1 });
@@ -855,3 +870,74 @@ window.addEventListener('resize', function() {
     pieChart.resize(); 
     lineChart.resize(); 
 });
+// ==========================================
+// 14. AI 时代切片（免费 API 版）
+// ==========================================
+const SILICON_API_KEY = "sk-emeyldsjqjrtcirhoysurblcdjfthoettwkomtotufhbvhsz"; // ⚠️ 替换成你的 Key
+const SILICON_URL = "https://api.siliconflow.cn/v1/chat/completions";
+
+document.getElementById('ai-slice-btn').addEventListener('click', async function() {
+    const currentYear = new Date(map.timeDimension.getCurrentTime()).getFullYear();
+    const yearEvents = allEvents.filter(e => e.year === currentYear);
+
+    if (yearEvents.length === 0) {
+        alert(`${currentYear} 年暂时没有收录事件，拖动时间轴试试其他年份吧。`);
+        return;
+    }
+
+    // 提取当年事件标题，拼接成 Prompt
+    const titles = yearEvents.map(e => `- ${e.title}`).join('\n');
+    const prompt = `你是一位专业的城市历史学家。请根据以下 ${currentYear} 年西安发生的事件，写一段 100 字左右的“年度时代切片”总结。要求语言生动、有历史纵深感，突出这一年在西安城市发展进程中的特点。\n\n事件列表：\n${titles}`;
+
+    const btn = this;
+    const originalText = btn.textContent;
+    btn.textContent = "⏳ AI 正在思考...";
+    btn.disabled = true;
+
+    try {
+        const response = await fetch(SILICON_URL, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${SILICON_API_KEY}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: "Qwen/Qwen2.5-7B-Instruct", // 免费模型
+                messages: [{ role: "user", content: prompt }],
+                temperature: 0.7,
+                max_tokens: 300
+            })
+        });
+
+        if (!response.ok) throw new Error(`API 请求失败: ${response.status}`);
+        const data = await response.json();
+        const aiText = data.choices[0].message.content;
+
+        // 在底部面板上方弹出一个漂亮的提示框
+        showAISlice(`${currentYear} 年 · 时代切片`, aiText);
+
+    } catch (error) {
+        console.error(error);
+        alert("AI 生成失败，请检查 API Key 和网络。");
+    } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
+});
+
+// 辅助函数：显示 AI 结果
+function showAISlice(title, text) {
+    let sliceDiv = document.getElementById('ai-slice-result');
+    if (!sliceDiv) {
+        sliceDiv = document.createElement('div');
+        sliceDiv.id = 'ai-slice-result';
+        sliceDiv.style.cssText = 'position:fixed; bottom:20px; left:50%; transform:translateX(-50%); max-width:600px; background:rgba(0,0,0,0.85); color:#fff; padding:20px 30px; border-radius:12px; z-index:10000; box-shadow:0 10px 30px rgba(0,0,0,0.5); line-height:1.7; font-size:15px; backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.1);';
+        document.body.appendChild(sliceDiv);
+    }
+    sliceDiv.innerHTML = `<b style="color:#00BFFF; font-size:16px;">✨ ${title}</b><br><br>${text}`;
+    sliceDiv.style.display = 'block';
+
+    // 10秒后自动淡出
+    clearTimeout(sliceDiv._timer);
+    sliceDiv._timer = setTimeout(() => { sliceDiv.style.display = 'none'; }, 10000);
+}
