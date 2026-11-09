@@ -299,6 +299,10 @@ body.cinema-mode #exit-cinema-btn { display: block; }
     text-overflow: ellipsis;    /* 超出显示省略号 */
     font-family: "STZhongsong", "SimSun", serif; /* 更有电影感的中文字体 */
     letter-spacing: 2px;
+    text-overflow: ellipsis;
+    left: 0;
+    right: 0;
+    position: absolute;
 }
 
 #cinema-year {
