@@ -1,4 +1,4 @@
-// ✨ 新增：从全局 window 对象获取 Leaflet
+// ✨ 从全局获取 Leaflet（确保 index.html 已加载）
 const L = window.L;
 
 import { regionCenters } from './config.js';
@@ -44,10 +44,10 @@ fetch('metro_lines.json')
                     return `${e.year}-${m}-${d}T00:00:00`;
                 }).sort();
                 
-                 // ✨ 核心保护：如果时间轴插件加载失败，给出提示，而不是白屏
+                // ✨ 核心保护：如果时间轴插件因为网络问题没加载成功
                 if (!map.timeDimension) {
                     console.error("TimeDimension 插件未成功加载！请检查 index.html 的 CDN 链接。");
-                    document.getElementById('loading-overlay').innerHTML = '<div style="color:red; font-size:20px;">时间轴插件加载失败，请刷新重试</div>';
+                    document.getElementById('loading-overlay').innerHTML = '<div style="color:red; font-size:20px;">时间轴插件加载失败，请按 Ctrl+F5 强刷或检查网络</div>';
                     return; // 终止后续执行
                 }
 

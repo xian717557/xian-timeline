@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>西安城市发展时间线</title>
     
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-timedimension@1.1.1/dist/leaflet.timedimension.control.min.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-ant-path@1.3.0/dist/leaflet-ant-path.css" />
-    <script src="https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <!-- 1. 核心样式依赖 -->
+    <link rel="stylesheet" href="https://lib.baomitu.com/leaflet/1.9.4/leaflet.css" />
+    <link rel="stylesheet" href="https://lib.baomitu.com/leaflet-timedimension/1.1.1/leaflet.timedimension.control.min.css" />
+    <link rel="stylesheet" href="https://lib.baomitu.com/leaflet-ant-path/1.3.0/leaflet-ant-path.css" />
+    
+    <!-- 本地样式 -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -37,7 +39,6 @@
                 <input type="checkbox" id="heat-mode-toggle"> 🔥 热力图
             </label>
             
-            <!-- ✨ 新增按钮 -->
             <button id="policy-btn" class="action-btn">📑 政策库</button>
             <button id="fullscreen-btn" class="action-btn">🖥️ 大屏模式</button>
             <button id="swipe-btn" class="action-btn">🪞 古今对比</button>
@@ -57,21 +58,17 @@
             <span>来源：<span id="panel-source"></span></span>
         </div>
         <p id="panel-desc"></p>
-            <a id="panel-link" href="#" target="_blank" style="display:none; margin-top:15px; padding:8px 15px; background:#007bff; color:#fff; text-decoration:none; border-radius:5px; font-size:14px; text-align:center;">阅读原文</a>
-        <!-- ✨ 新增：生成海报按钮 -->
+        <a id="panel-link" href="#" target="_blank" style="display:none; margin-top:15px; padding:8px 15px; background:#007bff; color:#fff; text-decoration:none; border-radius:5px; font-size:14px; text-align:center;">阅读原文</a>
         <button id="poster-btn" style="margin-top:15px; width:100%; padding:10px; background:#28a745; color:#fff; border:none; border-radius:5px; font-size:15px; font-weight:bold; cursor:pointer; transition:0.3s;">📸 生成专属档案海报</button>
     </div>
 
-    <!-- ✨ 新增：政策库弹窗 -->
     <div id="policy-modal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
                 <h2>📑 西安市政府政策文档库</h2>
                 <span id="close-policy" class="close-btn">&times;</span>
             </div>
-            <div class="policy-list" id="policy-list-container">
-                <!-- 列表由 JS 动态生成 -->
-            </div>
+            <div class="policy-list" id="policy-list-container"></div>
         </div>
     </div>
 
@@ -80,44 +77,51 @@
     <div id="bottom-panel">
         <div id="bar-chart"></div>
         <div id="pie-chart"></div>
-        <!-- ✨ 新增：宏观经济折线图 -->
         <div id="line-chart"></div>
     </div>
 
-    <!-- JS 部分（顺序绝对不能错） -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/iso8601-js-period@0.2.1/iso8601.min.js"></script>
-    <script src="https://unpkg.com/leaflet-timedimension@1.1.1/dist/leaflet.timedimension.min.js"></script>
-    <script src="https://unpkg.com/echarts@5.5.0/dist/echarts.min.js"></script>
-    <script src="https://unpkg.com/leaflet-ant-path@1.3.0/dist/leaflet-ant-path.js"></script>
-    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-    
-    <!-- 你的 ES6 模块入口 -->
-    <script type="module" src="js/main.js"></script>
-     <!-- ✨ 隐藏的海报生成容器 -->
- <div id="poster-template" style="position: fixed; left: -9999px; top: -9999px; width: 500px; height: 700px; background: #fff; padding: 30px; box-sizing: border-box; font-family: sans-serif; display: flex; flex-direction: column;">
-     <div style="font-size: 12px; color: #888; letter-spacing: 2px; margin-bottom: 5px;">XI'AN CITY DEVELOPMENT ARCHIVE</div>
-     <div style="font-size: 26px; font-weight: bold; color: #222; margin-bottom: 20px;" id="poster-title">事件标题</div>
-     <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-         <span style="background: #f0f0f0; padding: 4px 10px; border-radius: 12px; font-size: 13px; color: #555;" id="poster-year">年份</span>
-         <span style="background: #f0f0f0; padding: 4px 10px; border-radius: 12px; font-size: 13px; color: #555;" id="poster-cat">分类</span>
-     </div>
-     <div style="flex: 1; font-size: 16px; color: #444; line-height: 1.8; margin-bottom: 20px; overflow: hidden;" id="poster-desc">描述</div>
-     <div style="height: 250px; width: 100%; border-radius: 8px; background: #eee; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;" id="poster-map-container"></div>
-     <div style="display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid #eee; padding-top: 15px;">
-         <div>
-             <div style="font-size: 14px; font-weight: bold; color: #333;">🗺️ 西安城市发展档案</div>
-             <div style="font-size: 12px; color: #888;">扫码查看交互地图</div>
-         </div>
-         <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://xian717557.github.io/xian-timeline/" alt="QR Code" style="width: 70px; height: 70px;">
-     </div>
- </div>
-     <!-- ✨ 电影级字幕层 -->
+    <!-- 隐藏的海报生成容器 -->
+    <div id="poster-template" style="position: fixed; left: -9999px; top: -9999px; width: 500px; height: 700px; background: #fff; padding: 30px; box-sizing: border-box; font-family: sans-serif; display: flex; flex-direction: column;">
+        <div style="font-size: 12px; color: #888; letter-spacing: 2px; margin-bottom: 5px;">XI'AN CITY DEVELOPMENT ARCHIVE</div>
+        <div style="font-size: 26px; font-weight: bold; color: #222; margin-bottom: 20px;" id="poster-title">事件标题</div>
+        <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+            <span style="background: #f0f0f0; padding: 4px 10px; border-radius: 12px; font-size: 13px; color: #555;" id="poster-year">年份</span>
+            <span style="background: #f0f0f0; padding: 4px 10px; border-radius: 12px; font-size: 13px; color: #555;" id="poster-cat">分类</span>
+        </div>
+        <div style="flex: 1; font-size: 16px; color: #444; line-height: 1.8; margin-bottom: 20px; overflow: hidden;" id="poster-desc">描述</div>
+        <div style="height: 250px; width: 100%; border-radius: 8px; background: #eee; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden;" id="poster-map-container"></div>
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; border-top: 1px solid #eee; padding-top: 15px;">
+            <div>
+                <div style="font-size: 14px; font-weight: bold; color: #333;">🗺️ 西安城市发展档案</div>
+                <div style="font-size: 12px; color: #888;">扫码查看交互地图</div>
+            </div>
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://xian717557.github.io/xian-timeline/" alt="QR Code" style="width: 70px; height: 70px;">
+        </div>
+    </div>
+
+    <!-- 电影级字幕层 -->
     <div id="cinema-text-overlay" style="display:none; position:fixed; bottom:15vh; left:0; width:100%; text-align:center; z-index:9999; pointer-events:none; color:#fff; text-shadow:0 2px 10px rgba(0,0,0,0.8);">
         <h1 id="cinema-year" style="font-size: 48px; margin: 0; font-weight: 900; letter-spacing: 5px;">2024 年</h1>
         <p id="cinema-event" style="font-size: 24px; margin-top: 10px; font-family: serif;">事件标题</p>
     </div>
-    <!-- 作为入口启动模块化项目 -->
+
+    <!-- 2. 核心 JS 依赖 (顺序绝对不能错！) -->
+    <!-- 引入 Leaflet 核心 -->
+    <script src="https://lib.baomitu.com/leaflet/1.9.4/leaflet.js"></script>
+    <!-- 引入时间轴依赖 (为了解决 nezasa 报错) -->
+    <script src="https://lib.baomitu.com/iso8601-js-period/0.2.1/iso8601.min.js"></script>
+    <!-- 引入时间轴插件 -->
+    <script src="https://lib.baomitu.com/leaflet-timedimension/1.1.1/leaflet.timedimension.min.js"></script>
+    <!-- 引入 ECharts -->
+    <script src="https://lib.baomitu.com/echarts/5.5.0/echarts.min.js"></script>
+    <!-- 引入电流线插件 -->
+    <script src="https://lib.baomitu.com/leaflet-ant-path/1.3.0/leaflet-ant-path.js"></script>
+    <!-- 引入热力图插件 -->
+    <script src="https://lib.baomitu.com/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+    <!-- 引入 html2canvas (海报生成) -->
+    <script src="https://lib.baomitu.com/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <!-- 3. 你的 ES6 模块入口 -->
     <script type="module" src="js/main.js"></script>
 </body>
 </html>
