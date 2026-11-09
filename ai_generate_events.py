@@ -13,7 +13,7 @@ def generate_events_for_decade(start_year, end_year):
     prompt = f"""
     你是一个西安城市历史专家。请列出 {start_year} 年到 {end_year} 年期间，西安发生的 {5} 件重大城市发展事件（如：交通、经济、规划、文化、生态等）。
     必须严格按照以下 JSON 数组格式输出，不要包含任何其他废话或 markdown 标记：
-    [S
+    [
       {{
         "year": 年份(数字),
         "month": 月份(数字,不明确填1),
