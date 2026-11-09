@@ -1,3 +1,5 @@
+// ✨ 新增：从全局 window 对象获取 Leaflet（因为 index.html 中已经通过 script 加载）
+const L = window.L;
 // 负责地图初始化、底图、卷帘门
 export const map = L.map('map', {
     center: [34.3416, 108.9398], zoom: 11,

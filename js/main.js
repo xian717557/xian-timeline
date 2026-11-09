@@ -1,3 +1,6 @@
+// ✨ 新增：从全局 window 对象获取 Leaflet
+const L = window.L;
+
 import { regionCenters } from './config.js';
 import { map, initSwipe } from './mapCore.js';
 import { barChart, pieChart, lineChart, updateChartData, updateMacroChart } from './chartCore.js';
