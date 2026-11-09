@@ -44,6 +44,13 @@ fetch('metro_lines.json')
                     return `${e.year}-${m}-${d}T00:00:00`;
                 }).sort();
                 
+                 // ✨ 核心保护：如果时间轴插件加载失败，给出提示，而不是白屏
+                if (!map.timeDimension) {
+                    console.error("TimeDimension 插件未成功加载！请检查 index.html 的 CDN 链接。");
+                    document.getElementById('loading-overlay').innerHTML = '<div style="color:red; font-size:20px;">时间轴插件加载失败，请刷新重试</div>';
+                    return; // 终止后续执行
+                }
+
                 map.timeDimension.setAvailableTimes([...new Set(allTimes)], true);
                 
                 // 初次渲染
